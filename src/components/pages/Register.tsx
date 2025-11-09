@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { UserPlus, Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Building2 } from 'lucide-react';
+import React, { useState, FormEvent } from 'react';
+import { UserPlus, Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Building2, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { register } from '../../utils/api';
 
 interface RegisterProps {
   onRegister: (userData: any) => void;
@@ -39,6 +40,8 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -89,11 +92,31 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
     
-    if (validateForm()) {
-      onRegister(formData);
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await register(formData);
+      if (response.success && response.user) {
+        onRegister(response.user);
+      } else {
+        setSubmitError(response.message || 'Đăng ký thất bại');
+      }
+    } catch (err: any) {
+      setSubmitError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      
+      // Handle specific error cases
+      if (err.message.includes('Email này đã được sử dụng')) {
+        setErrors(prev => ({ ...prev, email: 'Email này đã được sử dụng' }));
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -175,6 +198,12 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {submitError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                <AlertCircle className="w-4 h-4" />
+                <span>{submitError}</span>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -363,9 +392,9 @@ export function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
                 )}
               </div>
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={loading}>
                 <UserPlus className="w-4 h-4 mr-2" />
-                Tạo tài khoản
+                {loading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
               </Button>
             </form>
 

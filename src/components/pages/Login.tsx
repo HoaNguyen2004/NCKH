@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -11,9 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from '../ui/card';
+import { login } from '../../utils/api';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (userData: any) => void;
   onSwitchToRegister?: () => void;
 }
 
@@ -22,15 +23,34 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      onLogin(email, password);
+    setError('');
+    
+    if (!email || !password) {
+      setError('Vui lòng nhập email và mật khẩu');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await login({ email, password });
+      if (response.success && response.user) {
+        onLogin(response.user);
+      } else {
+        setError(response.message || 'Đăng nhập thất bại');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDemoLogin = (role: string) => {
+  const handleDemoLogin = async (role: string) => {
     const demoAccounts: Record<string, { email: string; password: string }> = {
       admin: { email: 'admin@aifilter.com', password: 'admin123' },
       manager: { email: 'manager@aifilter.com', password: 'manager123' },
@@ -41,7 +61,21 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
     if (account) {
       setEmail(account.email);
       setPassword(account.password);
-      setTimeout(() => onLogin(account.email, account.password), 100);
+      setError('');
+      setLoading(true);
+      
+      try {
+        const response = await login(account);
+        if (response.success && response.user) {
+          onLogin(response.user);
+        } else {
+          setError(response.message || 'Đăng nhập thất bại');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -96,7 +130,7 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
               </div>
               <div>
                 <div className="text-gray-900">Báo cáo chi tiết</div>
-                <div className="text-gray-500 text-sm">Phân tích xu hướng thị trường</div>
+                <div className="text-gray-500 text-sm">Phân tích axu hướng thị trường</div>
               </div>
             </div>
           </div>
@@ -111,6 +145,12 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                <AlertCircle className="w-4 h-4" />
+                <span>{error}</span>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -174,9 +214,9 @@ export function Login({ onLogin, onSwitchToRegister }: LoginProps) {
                 </button>
               </div>
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={loading}>
                 <LogIn className="w-4 h-4 mr-2" />
-                Đăng nhập
+                {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </Button>
             </form>
 

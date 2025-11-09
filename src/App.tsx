@@ -20,26 +20,31 @@ export default function App() {
   const [showRegister, setShowRegister] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [posts, setPosts] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
 
-  const handleLogin = (email: string, password: string) => {
-    // Simple demo authentication
-    if (email && password) {
+  const handleLogin = (userData: any) => {
+    if (userData) {
+      setUser(userData);
       setIsLoggedIn(true);
       setShowRegister(false);
     }
   };
 
   const handleRegister = (userData: any) => {
-    // Simple demo registration - in real app, would call API
-    console.log('Registered user:', userData);
-    setIsLoggedIn(true);
-    setShowRegister(false);
+    if (userData) {
+      setUser(userData);
+      setIsLoggedIn(true);
+      setShowRegister(false);
+    }
   };
 
   const handleLogout = () => {
+    setUser(null);
     setIsLoggedIn(false);
     setShowRegister(false);
     setCurrentPage('dashboard');
+    // Remove token from localStorage
+    localStorage.removeItem('token');
   };
 
   const handleAnalyzePost = (postData: any) => {
