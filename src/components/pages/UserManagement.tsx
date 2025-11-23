@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { UserPlus, Search, MoreVertical, Mail, Phone, Shield } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -98,17 +99,19 @@ export function UserManagement() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
+  const { t } = useLanguage();
+
   return (
     <main className="flex-1 overflow-auto">
       <header className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-gray-900">Quản lý người dùng</h1>
-            <p className="text-gray-500">Quản lý tài khoản và phân quyền người dùng</p>
+            <h1 className="text-gray-900">{t('users.title')}</h1>
+            <p className="text-gray-500">{t('users.subtitle')}</p>
           </div>
           <Button>
             <UserPlus className="w-4 h-4 mr-2" />
-            Thêm người dùng
+            {t('users.addUser')}
           </Button>
         </div>
       </header>
@@ -117,7 +120,7 @@ export function UserManagement() {
         <div className="grid grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle>Tổng người dùng</CardTitle>
+              <CardTitle>{t('users.totalUsers')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{users.length}</div>
@@ -126,7 +129,7 @@ export function UserManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Đang hoạt động</CardTitle>
+              <CardTitle>{t('users.activeUsers')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -137,7 +140,7 @@ export function UserManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Nhân viên bán hàng</CardTitle>
+              <CardTitle>{t('role.sales')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -148,7 +151,7 @@ export function UserManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Quản lý cửa hàng</CardTitle>
+              <CardTitle>{t('role.manager')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -161,10 +164,10 @@ export function UserManagement() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Danh sách người dùng</CardTitle>
+              <CardTitle>{t('users.title')}</CardTitle>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input placeholder="Tìm kiếm..." className="pl-10 w-64" />
+                <Input placeholder={t('common.search') + '...'} className="pl-10 w-64" />
               </div>
             </div>
           </CardHeader>
@@ -172,12 +175,12 @@ export function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Người dùng</TableHead>
-                  <TableHead>Liên hệ</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Hoạt động gần nhất</TableHead>
-                  <TableHead>Bài đăng phân tích</TableHead>
+                  <TableHead>{t('common.name')}</TableHead>
+                  <TableHead>{t('leads.contact')}</TableHead>
+                  <TableHead>{t('users.role')}</TableHead>
+                  <TableHead>{t('common.status')}</TableHead>
+                  <TableHead>{t('users.lastActive')}</TableHead>
+                  <TableHead>{t('users.postsAnalyzed')}</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -211,7 +214,7 @@ export function UserManagement() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                        {user.status === 'active' ? 'Hoạt động' : 'Không hoạt động'}
+                        {user.status === 'active' ? t('common.active') : t('common.inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-gray-600">{user.lastActive}</TableCell>
@@ -224,10 +227,9 @@ export function UserManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Xem chi tiết</DropdownMenuItem>
-                          <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
-                          <DropdownMenuItem>Phân quyền</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">Vô hiệu hóa</DropdownMenuItem>
+                          <DropdownMenuItem>{t('users.viewDetails')}</DropdownMenuItem>
+                          <DropdownMenuItem>{t('common.edit')}</DropdownMenuItem>
+                          <DropdownMenuItem>{t('common.delete')}</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

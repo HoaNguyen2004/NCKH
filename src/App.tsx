@@ -1,7 +1,11 @@
 import { useState } from 'react';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/pages/Login';
 import { Register } from './components/pages/Register';
+import { AdminDashboard } from './components/pages/AdminDashboard';
+import { ManagerDashboard } from './components/pages/ManagerDashboard';
+import { SalesDashboard } from './components/pages/SalesDashboard';
 import { Dashboard } from './components/pages/Dashboard';
 import { UserManagement } from './components/pages/UserManagement';
 import { PostsManagement } from './components/pages/PostsManagement';
@@ -19,32 +23,47 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [userRole, setUserRole] = useState<'admin' | 'manager' | 'sales'>('admin');
   const [posts, setPosts] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
 
-  const handleLogin = (userData: any) => {
-    if (userData) {
-      setUser(userData);
+  const handleLogin = (email: string, password: string) => {
+    // Simple demo authentication with role detection
+    if (email && password) {
       setIsLoggedIn(true);
       setShowRegister(false);
+      
+      // Detect role from email
+      if (email.includes('admin')) {
+        setUserRole('admin');
+      } else if (email.includes('manager')) {
+        setUserRole('manager');
+      } else if (email.includes('sales')) {
+        setUserRole('sales');
+      }
     }
   };
 
   const handleRegister = (userData: any) => {
-    if (userData) {
-      setUser(userData);
-      setIsLoggedIn(true);
-      setShowRegister(false);
+    // Simple demo registration - in real app, would call API
+    console.log('Registered user:', userData);
+    setIsLoggedIn(true);
+    setShowRegister(false);
+    
+    // Set role from registration
+    if (userData.role === 'admin') {
+      setUserRole('admin');
+    } else if (userData.role === 'manager') {
+      setUserRole('manager');
+    } else {
+      setUserRole('sales');
     }
   };
 
   const handleLogout = () => {
-    setUser(null);
     setIsLoggedIn(false);
     setShowRegister(false);
     setCurrentPage('dashboard');
-    // Remove token from localStorage
-    localStorage.removeItem('token');
+    setUserRole('admin');
   };
 
   const handleAnalyzePost = (postData: any) => {
@@ -67,9 +86,21 @@ export default function App() {
   };
 
   const renderPage = () => {
+    // Render role-specific dashboard
+    if (currentPage === 'dashboard') {
+      switch (userRole) {
+        case 'admin':
+          return <AdminDashboard onNavigate={setCurrentPage} />;
+        case 'manager':
+          return <ManagerDashboard onNavigate={setCurrentPage} />;
+        case 'sales':
+          return <SalesDashboard onNavigate={setCurrentPage} />;
+        default:
+          return <Dashboard posts={posts} onAnalyze={handleAnalyzePost} />;
+      }
+    }
+
     switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard posts={posts} onAnalyze={handleAnalyzePost} />;
       case 'users':
         return <UserManagement />;
       case 'posts':
@@ -97,27 +128,31 @@ export default function App() {
     }
   };
 
-  if (!isLoggedIn) {
-    if (showRegister) {
-      return (
-        <Register 
-          onRegister={handleRegister} 
-          onSwitchToLogin={() => setShowRegister(false)} 
-        />
-      );
-    }
-    return (
-      <Login 
-        onLogin={handleLogin} 
-        onSwitchToRegister={() => setShowRegister(true)}
-      />
-    );
-  }
-
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} onLogout={handleLogout} />
-      {renderPage()}
-    </div>
+    <LanguageProvider>
+      {!isLoggedIn ? (
+        showRegister ? (
+          <Register 
+            onRegister={handleRegister}
+            onShowLogin={() => setShowRegister(false)}
+          />
+        ) : (
+          <Login 
+            onLogin={handleLogin}
+            onShowRegister={() => setShowRegister(true)}
+          />
+        )
+      ) : (
+        <div className="flex h-screen bg-gray-50">
+          <Sidebar 
+            currentPage={currentPage} 
+            onPageChange={setCurrentPage} 
+            onLogout={handleLogout}
+            userRole={userRole}
+          />
+          {renderPage()}
+        </div>
+      )}
+    </LanguageProvider>
   );
 }
