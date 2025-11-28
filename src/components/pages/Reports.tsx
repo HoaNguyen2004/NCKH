@@ -24,36 +24,24 @@ interface ReportsProps {
 export function Reports({ posts }: ReportsProps) {
   const [exportFormat, setExportFormat] = useState('xlsx');
 
+  const stats = {
+    totalPosts: posts.length,
+    buyingPosts: posts.filter(p => p.type === 'Buying').length,
+    sellingPosts: posts.filter(p => p.type === 'Selling').length,
+    avgConfidence: posts.length > 0
+      ? (posts.reduce((acc, p) => acc + parseFloat(p.confidence || 0), 0) / posts.length).toFixed(1)
+      : 0
+  };
+
   const handleExportReport = async () => {
     try {
-      const reportData = {
-        title: 'Báo cáo bán hàng',
-        type: 'general',
-        dateRange: {
-          startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          endDate: new Date()
-        },
-        data: stats
-      };
-
-      const response = await fetch('http://localhost:5000/api/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reportData)
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // Export theo định dạng được chọn
-        if (exportFormat === 'xlsx') {
-          exportExcel();
-        } else if (exportFormat === 'csv') {
-          exportCSV();
-        }
-        alert('Báo cáo đã được xuất thành công');
-      } else {
-        alert('Lỗi khi tạo báo cáo');
+      // Xuất file trực tiếp (không cần gọi API)
+      if (exportFormat === 'xlsx') {
+        exportExcel();
+      } else if (exportFormat === 'csv') {
+        exportCSV();
       }
+      alert('Báo cáo đã được xuất thành công');
     } catch (err) {
       console.error('Lỗi:', err);
       alert('Lỗi khi xuất báo cáo');
@@ -117,14 +105,6 @@ export function Reports({ posts }: ReportsProps) {
     link.href = URL.createObjectURL(blob);
     link.download = `report_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-  };
-  const stats = {
-    totalPosts: posts.length,
-    buyingPosts: posts.filter(p => p.type === 'Buying').length,
-    sellingPosts: posts.filter(p => p.type === 'Selling').length,
-    avgConfidence: posts.length > 0
-      ? (posts.reduce((acc, p) => acc + parseFloat(p.confidence), 0) / posts.length).toFixed(1)
-      : 0
   };
 
   const categoryData = [
