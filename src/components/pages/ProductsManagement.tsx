@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, TrendingUp, TrendingDown, Package } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -17,9 +17,26 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../ui/dialog';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 export function ProductsManagement() {
-  const [products] = useState([
+  const [products, setProducts] = useState([
     {
       id: 1,
       name: 'Laptop Dell Latitude 7490',
@@ -87,6 +104,138 @@ export function ProductsManagement() {
     },
   ]);
 
+  const [showDialog, setShowDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'Laptop',
+    avgPrice: '',
+    minPrice: '',
+    maxPrice: '',
+    demand: 'medium',
+    buyingPosts: 0,
+    sellingPosts: 0
+  });
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/products');
+      const data = await response.json();
+      if (data.success && data.products) {
+        setProducts(data.products);
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải sản phẩm:', err);
+    }
+  };
+
+  const handleAddProduct = async () => {
+    if (!formData.name || !formData.avgPrice) {
+      alert('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          avgPrice: parseFloat(formData.avgPrice),
+          minPrice: parseFloat(formData.minPrice || formData.avgPrice),
+          maxPrice: parseFloat(formData.maxPrice || formData.avgPrice)
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Thêm sản phẩm thành công');
+        setFormData({ name: '', category: 'Laptop', avgPrice: '', minPrice: '', maxPrice: '', demand: 'medium', buyingPosts: 0, sellingPosts: 0 });
+        setShowDialog(false);
+        fetchProducts();
+      } else {
+        alert(data.message || 'Lỗi khi thêm sản phẩm');
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert('Lỗi khi thêm sản phẩm');
+    }
+  };
+
+  const handleEditProduct = (product: any) => {
+    setEditingProductId(product._id);
+    setFormData({
+      name: product.name,
+      category: product.category,
+      avgPrice: product.avgPrice.toString(),
+      minPrice: product.minPrice.toString(),
+      maxPrice: product.maxPrice.toString(),
+      demand: product.demand,
+      buyingPosts: product.buyingPosts,
+      sellingPosts: product.sellingPosts
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!formData.name || !formData.avgPrice) {
+      alert('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/products/${editingProductId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          avgPrice: parseFloat(formData.avgPrice),
+          minPrice: parseFloat(formData.minPrice),
+          maxPrice: parseFloat(formData.maxPrice)
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Cập nhật sản phẩm thành công');
+        setShowEditDialog(false);
+        setEditingProductId(null);
+        fetchProducts();
+      } else {
+        alert(data.message || 'Lỗi khi cập nhật sản phẩm');
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert('Lỗi khi cập nhật sản phẩm');
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('Bạn chắc chắn muốn xóa sản phẩm này?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/products/${productId}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Xóa sản phẩm thành công');
+        fetchProducts();
+      } else {
+        alert(data.message || 'Lỗi khi xóa sản phẩm');
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert('Lỗi khi xóa sản phẩm');
+    }
+  };
+
   const getDemandColor = (demand: string) => {
     switch (demand) {
       case 'high':
@@ -121,10 +270,101 @@ export function ProductsManagement() {
             <h1 className="text-gray-900">Quản lý sản phẩm</h1>
             <p className="text-gray-500">Theo dõi giá và nhu cầu thị trường</p>
           </div>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Thêm sản phẩm theo dõi
-          </Button>
+          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Thêm sản phẩm theo dõi
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Thêm sản phẩm theo dõi</DialogTitle>
+                <DialogDescription>
+                  Nhập thông tin sản phẩm cần theo dõi
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Tên sản phẩm</Label>
+                  <Input
+                    id="name"
+                    placeholder="Ví dụ: Laptop Dell Latitude 7490"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="category">Danh mục</Label>
+                  <Select value={formData.category} onValueChange={(val) => setFormData({ ...formData, category: val })}>
+                    <SelectTrigger id="category">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Laptop">Laptop</SelectItem>
+                      <SelectItem value="Phone">Phone</SelectItem>
+                      <SelectItem value="Tablet">Tablet</SelectItem>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Furniture">Furniture</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="avgPrice">Giá trung bình</Label>
+                    <Input
+                      id="avgPrice"
+                      type="number"
+                      placeholder="0"
+                      value={formData.avgPrice}
+                      onChange={(e) => setFormData({ ...formData, avgPrice: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="minPrice">Giá thấp nhất</Label>
+                    <Input
+                      id="minPrice"
+                      type="number"
+                      placeholder="0"
+                      value={formData.minPrice}
+                      onChange={(e) => setFormData({ ...formData, minPrice: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="maxPrice">Giá cao nhất</Label>
+                    <Input
+                      id="maxPrice"
+                      type="number"
+                      placeholder="0"
+                      value={formData.maxPrice}
+                      onChange={(e) => setFormData({ ...formData, maxPrice: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="demand">Nhu cầu</Label>
+                  <Select value={formData.demand} onValueChange={(val) => setFormData({ ...formData, demand: val })}>
+                    <SelectTrigger id="demand">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">Cao</SelectItem>
+                      <SelectItem value="medium">Trung bình</SelectItem>
+                      <SelectItem value="low">Thấp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDialog(false)}>
+                  Hủy
+                </Button>
+                <Button onClick={handleAddProduct}>
+                  Thêm sản phẩm
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
@@ -195,6 +435,7 @@ export function ProductsManagement() {
                   <TableHead>Bài mua</TableHead>
                   <TableHead>Bài bán</TableHead>
                   <TableHead>Xu hướng</TableHead>
+                  <TableHead>Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -234,12 +475,113 @@ export function ProductsManagement() {
                         </span>
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleEditProduct(product)}>
+                          Sửa
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeleteProduct(product._id)}>
+                          Xóa
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
+
+        {/* Edit Product Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Chỉnh sửa sản phẩm</DialogTitle>
+              <DialogDescription>
+                Cập nhật thông tin sản phẩm
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">Tên sản phẩm</Label>
+                <Input
+                  id="edit-name"
+                  placeholder="Ví dụ: Laptop Dell Latitude 7490"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-category">Danh mục</Label>
+                <Select value={formData.category} onValueChange={(val) => setFormData({ ...formData, category: val })}>
+                  <SelectTrigger id="edit-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Laptop">Laptop</SelectItem>
+                    <SelectItem value="Phone">Phone</SelectItem>
+                    <SelectItem value="Tablet">Tablet</SelectItem>
+                    <SelectItem value="Electronics">Electronics</SelectItem>
+                    <SelectItem value="Furniture">Furniture</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-avgPrice">Giá trung bình</Label>
+                  <Input
+                    id="edit-avgPrice"
+                    type="number"
+                    placeholder="0"
+                    value={formData.avgPrice}
+                    onChange={(e) => setFormData({ ...formData, avgPrice: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-minPrice">Giá thấp nhất</Label>
+                  <Input
+                    id="edit-minPrice"
+                    type="number"
+                    placeholder="0"
+                    value={formData.minPrice}
+                    onChange={(e) => setFormData({ ...formData, minPrice: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-maxPrice">Giá cao nhất</Label>
+                  <Input
+                    id="edit-maxPrice"
+                    type="number"
+                    placeholder="0"
+                    value={formData.maxPrice}
+                    onChange={(e) => setFormData({ ...formData, maxPrice: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-demand">Nhu cầu</Label>
+                <Select value={formData.demand} onValueChange={(val) => setFormData({ ...formData, demand: val })}>
+                  <SelectTrigger id="edit-demand">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="high">Cao</SelectItem>
+                    <SelectItem value="medium">Trung bình</SelectItem>
+                    <SelectItem value="low">Thấp</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                Hủy
+              </Button>
+              <Button onClick={handleUpdateProduct}>
+                Cập nhật
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );

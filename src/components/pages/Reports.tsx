@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { BarChart3, TrendingUp, Download, Calendar } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Button } from '../ui/button';
 import {
   Card,
@@ -20,6 +22,102 @@ interface ReportsProps {
 }
 
 export function Reports({ posts }: ReportsProps) {
+  const [exportFormat, setExportFormat] = useState('xlsx');
+
+  const handleExportReport = async () => {
+    try {
+      const reportData = {
+        title: 'Báo cáo bán hàng',
+        type: 'general',
+        dateRange: {
+          startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          endDate: new Date()
+        },
+        data: stats
+      };
+
+      const response = await fetch('http://localhost:5000/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reportData)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // Export theo định dạng được chọn
+        if (exportFormat === 'xlsx') {
+          exportExcel();
+        } else if (exportFormat === 'csv') {
+          exportCSV();
+        }
+        alert('Báo cáo đã được xuất thành công');
+      } else {
+        alert('Lỗi khi tạo báo cáo');
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert('Lỗi khi xuất báo cáo');
+    }
+  };
+
+  const exportExcel = () => {
+    // Tạo dữ liệu cho sheet
+    const reportData = [
+      ['BÁO CÁO BÁN HÀNG & PHÂN TÍCH'],
+      ['Ngày xuất:', new Date().toLocaleString('vi-VN')],
+      [],
+      ['THỐNG KÊ CHUNG'],
+      ['Chỉ số', 'Giá trị', 'Thay đổi'],
+      ['Tổng bài đăng', stats.totalPosts, '+12% so với tháng trước'],
+      ['Bài mua', stats.buyingPosts, '+8% so với tháng trước'],
+      ['Bài bán', stats.sellingPosts, '+15% so với tháng trước'],
+      ['Độ chính xác TB', `${stats.avgConfidence}%`, '+2% so với tháng trước'],
+      [],
+      ['PHÂN BỐ THEO DANH MỤC'],
+      ['Danh mục', 'Số lượng', 'Tỉ lệ (%)'],
+      ['Laptop', 45, 35],
+      ['Phone', 38, 30],
+      ['Furniture', 25, 20],
+      ['Electronics', 20, 15],
+      [],
+      ['PHÂN BỐ THEO ĐỊA ĐIỂM'],
+      ['Địa điểm', 'Số lượng', 'Tỉ lệ (%)'],
+      ['Hà Nội', 52, 40],
+      ['TP.HCM', 39, 30],
+      ['Đà Nẵng', 26, 20],
+      ['Hải Phòng', 13, 10],
+      [],
+      ['THÔNG TIN SẢN PHẨM'],
+      ['Xu hướng giá trung bình', '8.5M VNĐ', '+5.2% so với tháng trước'],
+      ['Tỷ lệ mua/bán', (stats.buyingPosts / stats.sellingPosts || 0).toFixed(2), ''],
+      ['Thời gian phản hồi TB', '2.5 giờ', 'Nhanh hơn 30 phút so với tháng trước'],
+    ];
+
+    // Tạo workbook
+    const ws = XLSX.utils.aoa_to_sheet(reportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo');
+
+    // Thiết lập độ rộng cột
+    ws['!cols'] = [
+      { wch: 30 },
+      { wch: 15 },
+      { wch: 30 }
+    ];
+
+    // Xuất file
+    const fileName = `bao_cao_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const exportCSV = () => {
+    const csv = `Báo cáo Bán hàng\n\nTổng bài đăng,${stats.totalPosts}\nBài mua,${stats.buyingPosts}\nBài bán,${stats.sellingPosts}\nĐộ chính xác TB,${stats.avgConfidence}%`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `report_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
   const stats = {
     totalPosts: posts.length,
     buyingPosts: posts.filter(p => p.type === 'Buying').length,
@@ -67,7 +165,16 @@ export function Reports({ posts }: ReportsProps) {
               <Calendar className="w-4 h-4 mr-2" />
               Chọn ngày
             </Button>
-            <Button>
+            <Select value={exportFormat} onValueChange={setExportFormat}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="xlsx">Excel</SelectItem>
+                <SelectItem value="csv">CSV</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={handleExportReport}>
               <Download className="w-4 h-4 mr-2" />
               Xuất báo cáo
             </Button>

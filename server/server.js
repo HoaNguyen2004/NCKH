@@ -28,6 +28,12 @@ const startServer = async () => {
 
     // ✅ Auth routes
     app.use('/api/auth', require('./routes/auth'));
+    
+    // ✅ Resource routes
+    app.use('/api/users', require('./routes/users'));
+    app.use('/api/products', require('./routes/products'));
+    app.use('/api/leads', require('./routes/leads'));
+    app.use('/api/reports', require('./routes/reports'));
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {

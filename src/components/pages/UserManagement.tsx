@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { UserPlus, Search, MoreVertical, Mail, Phone, Shield } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Button } from '../ui/button';
@@ -25,9 +25,26 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '../ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../ui/dialog';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 
 export function UserManagement() {
-  const [users] = useState([
+  const [users, setUsers] = useState([
     {
       id: 1,
       name: 'Nguyễn Văn A',
@@ -80,6 +97,137 @@ export function UserManagement() {
     },
   ]);
 
+  const [showDialog, setShowDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    role: 'Sales Staff',
+    password: 'password123'
+  });
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/users');
+      const data = await response.json();
+      if (data.success && data.users) {
+        const formattedUsers = data.users.map((u: any, idx: number) => ({
+          id: u._id || u.id,
+          _id: u._id,
+          name: u.fullName,
+          email: u.email,
+          phone: u.phone || '',
+          role: u.role || 'user',
+          status: 'active',
+          lastActive: new Date(u.updatedAt).toLocaleString('vi-VN'),
+          postsAnalyzed: idx * 100 + 50
+        }));
+        setUsers(formattedUsers);
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải người dùng:', err);
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!formData.fullName || !formData.email) {
+      alert('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Thêm người dùng thành công');
+        setFormData({ fullName: '', email: '', phone: '', role: 'Sales Staff', password: 'password123' });
+        setShowDialog(false);
+        fetchUsers();
+      } else {
+        alert(data.message || 'Lỗi khi thêm người dùng');
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert('Lỗi khi thêm người dùng');
+    }
+  };
+
+  const handleEditUser = (user: any) => {
+    setEditingUserId(user.id);
+    setFormData({
+      fullName: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      password: 'password123'
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!formData.fullName || !formData.email) {
+      alert('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/users/${editingUserId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          phone: formData.phone,
+          role: formData.role
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Cập nhật người dùng thành công');
+        setShowEditDialog(false);
+        setEditingUserId(null);
+        fetchUsers();
+      } else {
+        alert(data.message || 'Lỗi khi cập nhật người dùng');
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert('Lỗi khi cập nhật người dùng');
+    }
+  };
+
+  const handleDeleteUser = async (user: any) => {
+    if (!confirm('Bạn chắc chắn muốn xóa người dùng này?')) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/users/${user._id || user.id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Xóa người dùng thành công');
+        fetchUsers();
+      } else {
+        alert(data.message || 'Lỗi khi xóa người dùng');
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert('Lỗi khi xóa người dùng');
+    }
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'Admin':
@@ -109,10 +257,136 @@ export function UserManagement() {
             <h1 className="text-gray-900">{t('users.title')}</h1>
             <p className="text-gray-500">{t('users.subtitle')}</p>
           </div>
-          <Button>
-            <UserPlus className="w-4 h-4 mr-2" />
-            {t('users.addUser')}
-          </Button>
+          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="w-4 h-4 mr-2" />
+                {t('users.addUser')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Thêm người dùng mới</DialogTitle>
+                <DialogDescription>
+                  Nhập thông tin người dùng cần thêm vào hệ thống
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="fullName">Tên đầy đủ</Label>
+                  <Input
+                    id="fullName"
+                    placeholder="Nhập tên"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="nhập@email.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Điện thoại</Label>
+                  <Input
+                    id="phone"
+                    placeholder="0123456789"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="role">Vai trò</Label>
+                  <Select value={formData.role} onValueChange={(val) => setFormData({ ...formData, role: val })}>
+                    <SelectTrigger id="role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Store Manager">Store Manager</SelectItem>
+                      <SelectItem value="Sales Staff">Sales Staff</SelectItem>
+                      <SelectItem value="SMB Owner">SMB Owner</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDialog(false)}>
+                  Hủy
+                </Button>
+                <Button onClick={handleAddUser}>
+                  Thêm người dùng
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
+                <DialogDescription>
+                  Cập nhật thông tin người dùng
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-fullName">Tên đầy đủ</Label>
+                  <Input
+                    id="edit-fullName"
+                    placeholder="Nhập tên"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    disabled
+                    value={formData.email}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-phone">Điện thoại</Label>
+                  <Input
+                    id="edit-phone"
+                    placeholder="0123456789"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-role">Vai trò</Label>
+                  <Select value={formData.role} onValueChange={(val) => setFormData({ ...formData, role: val })}>
+                    <SelectTrigger id="edit-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Store Manager">Store Manager</SelectItem>
+                      <SelectItem value="Sales Staff">Sales Staff</SelectItem>
+                      <SelectItem value="SMB Owner">SMB Owner</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                  Hủy
+                </Button>
+                <Button onClick={handleUpdateUser}>
+                  Cập nhật
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </header>
 
@@ -220,18 +494,14 @@ export function UserManagement() {
                     <TableCell className="text-gray-600">{user.lastActive}</TableCell>
                     <TableCell className="text-gray-900">{user.postsAnalyzed}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>{t('users.viewDetails')}</DropdownMenuItem>
-                          <DropdownMenuItem>{t('common.edit')}</DropdownMenuItem>
-                          <DropdownMenuItem>{t('common.delete')}</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleEditUser(user)}>
+                          {t('common.edit')}
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(user)}>
+                          {t('common.delete')}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
