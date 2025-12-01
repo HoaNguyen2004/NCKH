@@ -9,6 +9,12 @@ const userSchema = new mongoose.Schema({
   company:  { type: String, default: '' },
   location: { type: String, default: '' },
   role:     { type: String, default: 'user' },
+  permissions: {
+    type: [String],
+    default: []
+  },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
   password: { type: String, required: true, minlength: 6 },
 }, { timestamps: true });
 

@@ -307,12 +307,36 @@ export function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Admin">Admin - Quản trị viên</SelectItem>
                       <SelectItem value="Store Manager">Store Manager</SelectItem>
                       <SelectItem value="Sales Staff">Sales Staff</SelectItem>
                       <SelectItem value="SMB Owner">SMB Owner</SelectItem>
                     </SelectContent>
                   </Select>
+                  {/* Phân quyền chi tiết */}
+                  <div className="mt-2">
+                    <Label>Phân quyền</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {['view_reports','manage_products','manage_leads','manage_users','access_ai','export_data'].map((perm) => (
+                        <label key={perm} className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions?.includes(perm) || false}
+                            onChange={e => {
+                              const checked = e.target.checked;
+                              setFormData(f => ({
+                                ...f,
+                                permissions: checked
+                                  ? [...(f.permissions||[]), perm]
+                                  : (f.permissions||[]).filter(p => p !== perm)
+                              }));
+                            }}
+                          />
+                          {perm}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -369,12 +393,36 @@ export function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Admin">Admin - Quản trị viên</SelectItem>
                       <SelectItem value="Store Manager">Store Manager</SelectItem>
                       <SelectItem value="Sales Staff">Sales Staff</SelectItem>
                       <SelectItem value="SMB Owner">SMB Owner</SelectItem>
                     </SelectContent>
                   </Select>
+                  {/* Phân quyền chi tiết */}
+                  <div className="mt-2">
+                    <Label>Phân quyền</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {['view_reports','manage_products','manage_leads','manage_users','access_ai','export_data'].map((perm) => (
+                        <label key={perm} className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions?.includes(perm) || false}
+                            onChange={e => {
+                              const checked = e.target.checked;
+                              setFormData(f => ({
+                                ...f,
+                                permissions: checked
+                                  ? [...(f.permissions||[]), perm]
+                                  : (f.permissions||[]).filter(p => p !== perm)
+                              }));
+                            }}
+                          />
+                          {perm}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
               <DialogFooter>

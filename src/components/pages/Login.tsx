@@ -13,7 +13,7 @@ import {
 } from '../ui/card';
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (email: string, password: string, remember?: boolean) => void;
   onShowRegister?: () => void;
 }
 
@@ -22,11 +22,14 @@ export function Login({ onLogin, onShowRegister }: LoginProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      onLogin(email, password);
+      onLogin(email, password, rememberMe);
     }
   };
 
@@ -41,7 +44,7 @@ export function Login({ onLogin, onShowRegister }: LoginProps) {
     if (account) {
       setEmail(account.email);
       setPassword(account.password);
-      setTimeout(() => onLogin(account.email, account.password), 100);
+      setTimeout(() => onLogin(account.email, account.password, false), 100);
     }
   };
 
@@ -168,6 +171,7 @@ export function Login({ onLogin, onShowRegister }: LoginProps) {
                 </div>
                 <button
                   type="button"
+                  onClick={() => { setForgotOpen(true); setForgotEmail(email); setForgotStatus(null); }}
                   className="text-sm text-blue-600 hover:underline"
                 >
                   Quên mật khẩu?
@@ -219,6 +223,49 @@ export function Login({ onLogin, onShowRegister }: LoginProps) {
                 </Button>
               </div>
             </div>
+
+            {/* Forgot password modal (simple) */}
+            {forgotOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-medium">Quên mật khẩu</h3>
+                  <p className="text-sm text-gray-600">Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu.</p>
+                  <div className="mt-4">
+                    <Input value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="your@email.com" />
+                  </div>
+                    <div className="mt-4 flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setForgotOpen(false)}>Hủy</Button>
+                    <Button onClick={async () => {
+                      if (!forgotEmail) { setForgotStatus('Vui lòng nhập email'); return; }
+                      try {
+                        setForgotStatus('Đang gửi...');
+                        const resp = await fetch('/api/auth/forgot', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: forgotEmail })
+                        });
+                        const data = await resp.json();
+                        if (resp.ok) {
+                          if (data.resetUrl) {
+                            // SMTP not configured on server: show link to user for dev
+                            setForgotStatus('Reset link (dev): ' + data.resetUrl);
+                          } else {
+                            setForgotStatus('Nếu email tồn tại, hướng dẫn đã được gửi.');
+                          }
+                          setTimeout(() => setForgotOpen(false), 1800);
+                        } else {
+                          setForgotStatus(data.message || 'Lỗi khi gửi email');
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        setForgotStatus('Lỗi kết nối đến server');
+                      }
+                    }}>Gửi</Button>
+                  </div>
+                  {forgotStatus && <div className="mt-3 text-sm text-green-600 break-words">{forgotStatus}</div>}
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 text-center text-sm text-gray-500">
               Chưa có tài khoản?{' '}

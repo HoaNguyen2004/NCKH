@@ -271,7 +271,6 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                     <SelectItem value="sales">Sales Staff - Nhân viên bán hàng</SelectItem>
                     <SelectItem value="manager">Store Manager - Quản lý cửa hàng</SelectItem>
                     <SelectItem value="student">IT Student - Sinh viên IT</SelectItem>
-                    <SelectItem value="admin">System Admin - Quản trị hệ thống</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.role && (

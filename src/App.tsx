@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/pages/Login';
@@ -26,7 +26,7 @@ export default function App() {
   const [userRole, setUserRole] = useState<'admin' | 'manager' | 'sales'>('admin');
   const [posts, setPosts] = useState<any[]>([]);
 
-  const handleLogin = (email: string, password: string) => {
+  const handleLogin = (email: string, password: string, remember: boolean = false) => {
     // Simple demo authentication with role detection
     if (email && password) {
       setIsLoggedIn(true);
@@ -40,8 +40,31 @@ export default function App() {
       } else if (email.includes('sales')) {
         setUserRole('sales');
       }
+      // Persist session when requested
+      if (remember) {
+        try {
+          localStorage.setItem('aifilter.session', JSON.stringify({ isLoggedIn: true, userRole: email.includes('admin') ? 'admin' : email.includes('manager') ? 'manager' : email.includes('sales') ? 'sales' : 'sales' }));
+        } catch (e) {
+          // ignore
+        }
+      }
     }
   };
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('aifilter.session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.isLoggedIn && parsed.userRole) {
+          setIsLoggedIn(true);
+          setUserRole(parsed.userRole);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   const handleRegister = (userData: any) => {
     // Simple demo registration - in real app, would call API
@@ -64,6 +87,7 @@ export default function App() {
     setShowRegister(false);
     setCurrentPage('dashboard');
     setUserRole('admin');
+    try { localStorage.removeItem('aifilter.session'); } catch (e) {}
   };
 
   const handleAnalyzePost = (postData: any) => {

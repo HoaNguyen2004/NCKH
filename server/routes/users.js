@@ -30,7 +30,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/users - Thêm người dùng mới
 router.post('/', async (req, res) => {
   try {
-    const { fullName, email, phone, company, location, role, password } = req.body;
+    const { fullName, email, phone, company, location, role, password, permissions } = req.body;
 
     if (!fullName || !email || !password) {
       return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc' });
@@ -48,7 +48,8 @@ router.post('/', async (req, res) => {
       company,
       location,
       role: role || 'user',
-      password
+      password,
+      permissions: permissions || []
     });
 
     return res.status(201).json({
@@ -61,7 +62,8 @@ router.post('/', async (req, res) => {
         phone: user.phone,
         company: user.company,
         location: user.location,
-        role: user.role
+        role: user.role,
+        permissions: user.permissions
       }
     });
   } catch (err) {
@@ -73,16 +75,15 @@ router.post('/', async (req, res) => {
 // PUT /api/users/:id - Cập nhật người dùng
 router.put('/:id', async (req, res) => {
   try {
-    const { fullName, phone, company, location, role } = req.body;
-    
+    const { fullName, phone, company, location, role, permissions } = req.body;
+    const update = { fullName, phone, company, location, role };
+    if (permissions) update.permissions = permissions;
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { fullName, phone, company, location, role },
+      update,
       { new: true }
     ).select('-password');
-    
     if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
-    
     return res.json({ success: true, message: 'Cập nhật thành công', user });
   } catch (err) {
     console.error(err);

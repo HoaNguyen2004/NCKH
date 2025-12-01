@@ -1,5 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Download, Calendar } from 'lucide-react';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as ReTooltip,
+  BarChart as ReBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from 'recharts';
 import * as XLSX from 'xlsx';
 import { Button } from '../ui/button';
 import {
@@ -107,19 +119,54 @@ export function Reports({ posts }: ReportsProps) {
     link.click();
   };
 
-  const categoryData = [
-    { name: 'Laptop', count: 45, percentage: 35 },
-    { name: 'Phone', count: 38, percentage: 30 },
-    { name: 'Furniture', count: 25, percentage: 20 },
-    { name: 'Electronics', count: 20, percentage: 15 },
-  ];
+  const [categoryData, setCategoryData] = useState<Array<{ name: string; count: number; percentage: number }>>([]);
+  const [locationData, setLocationData] = useState<Array<{ name: string; count: number; percentage: number }>>([]);
 
-  const locationData = [
-    { name: 'Hà Nội', count: 52, percentage: 40 },
-    { name: 'TP.HCM', count: 39, percentage: 30 },
-    { name: 'Đà Nẵng', count: 26, percentage: 20 },
-    { name: 'Hải Phòng', count: 13, percentage: 10 },
-  ];
+  // Fetch products and leads to build charts dynamically
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // fetch products for categories
+        const prodRes = await fetch('http://localhost:5000/api/products');
+        const prodJson = await prodRes.json();
+        const prods = Array.isArray(prodJson.products) ? prodJson.products : prodJson || [];
+
+        // count by category
+        const catCounts: Record<string, number> = {};
+        prods.forEach((p: any) => {
+          const key = (p.category || 'Unknown').toString();
+          catCounts[key] = (catCounts[key] || 0) + 1;
+        });
+        const totalCats = Object.values(catCounts).reduce((a, b) => a + b, 0) || 1;
+        const cats = Object.entries(catCounts).map(([name, count]) => ({ name, count, percentage: Math.round((count / totalCats) * 100) }));
+        // sort by count desc and keep top 8
+        cats.sort((a, b) => b.count - a.count);
+        setCategoryData(cats.slice(0, 8));
+
+        // fetch leads for locations
+        const leadRes = await fetch('http://localhost:5000/api/leads');
+        const leadJson = await leadRes.json();
+        const leads = Array.isArray(leadJson.leads) ? leadJson.leads : leadJson || [];
+
+        const locCounts: Record<string, number> = {};
+        leads.forEach((l: any) => {
+          const key = (l.location || 'Unknown').toString();
+          locCounts[key] = (locCounts[key] || 0) + 1;
+        });
+        const totalLocs = Object.values(locCounts).reduce((a, b) => a + b, 0) || 1;
+        const locs = Object.entries(locCounts).map(([name, count]) => ({ name, count, percentage: Math.round((count / totalLocs) * 100) }));
+        locs.sort((a, b) => b.count - a.count);
+        setLocationData(locs.slice(0, 12));
+      } catch (err) {
+        console.error('Error loading report data', err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const CATEGORY_COLORS = ['#2563eb', '#0ea5a0', '#f97316', '#8b5cf6'];
+  const LOCATION_COLOR = '#10b981';
 
   return (
     <main className="flex-1 overflow-auto">
@@ -207,54 +254,63 @@ export function Reports({ posts }: ReportsProps) {
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
-          {/* Category Distribution */}
+          {/* Category Distribution (Pie) */}
           <Card>
             <CardHeader>
               <CardTitle>Phân bố theo danh mục</CardTitle>
               <CardDescription>Top danh mục sản phẩm được quan tâm</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {categoryData.map((category) => (
-                  <div key={category.name}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-gray-700">{category.name}</span>
-                      <span className="text-gray-900">{category.count} bài đăng</span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-blue-600 h-full"
-                        style={{ width: `${category.percentage}%` }}
-                      />
-                    </div>
+              <div style={{ height: 260 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      dataKey="count"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      innerRadius={36}
+                      paddingAngle={4}
+                      label={(entry) => `${entry.name}: ${entry.count}`}
+                    >
+                      {categoryData.map((_, idx) => (
+                        <Cell key={`cell-${idx}`} fill={CATEGORY_COLORS[idx % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <ReTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {categoryData.map((c, i) => (
+                  <div key={c.name} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm" style={{ background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
+                    <div className="text-sm">{c.name} — {c.count} ({c.percentage}%)</div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Location Distribution */}
+          {/* Location Distribution (Bar) */}
           <Card>
             <CardHeader>
               <CardTitle>Phân bố theo địa điểm</CardTitle>
               <CardDescription>Khu vực có nhu cầu cao</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {locationData.map((location) => (
-                  <div key={location.name}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-gray-700">{location.name}</span>
-                      <span className="text-gray-900">{location.count} bài đăng</span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-green-600 h-full"
-                        style={{ width: `${location.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div style={{ height: 260 }}>
+                <ResponsiveContainer>
+                  <ReBarChart data={locationData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <ReTooltip />
+                    <Bar dataKey="count" fill={LOCATION_COLOR} />
+                  </ReBarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>

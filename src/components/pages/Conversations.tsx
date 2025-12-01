@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Send, Paperclip, Phone, Video, MoreVertical } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -10,92 +10,198 @@ import {
   CardContent,
 } from '../ui/card';
 
+import { io, Socket } from 'socket.io-client';
+
 export function Conversations() {
-  const [selectedChat, setSelectedChat] = useState(1);
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const socketRef = useRef<Socket | null>(null);
+  const messageIdsRef = useRef<Set<string>>(new Set());
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const conversations = [
-    {
-      id: 1,
-      name: 'Nguyễn Minh Tuấn',
-      avatar: 'NT',
-      lastMessage: 'Laptop còn hàng không bạn?',
-      time: '5 phút trước',
-      unread: 2,
-      online: true,
-      type: 'Buying'
-    },
-    {
-      id: 2,
-      name: 'Trần Thu Hà',
-      avatar: 'TH',
-      lastMessage: 'Máy em bán 12.5tr được không?',
-      time: '15 phút trước',
-      unread: 0,
-      online: true,
-      type: 'Selling'
-    },
-    {
-      id: 3,
-      name: 'Lê Văn Hùng',
-      avatar: 'LH',
-      lastMessage: 'Anh cho em xem máy được không?',
-      time: '1 giờ trước',
-      unread: 1,
-      online: false,
-      type: 'Buying'
-    },
-    {
-      id: 4,
-      name: 'Phạm Thị Lan',
-      avatar: 'PL',
-      lastMessage: 'Cảm ơn anh nhé!',
-      time: '2 giờ trước',
-      unread: 0,
-      online: false,
-      type: 'Buying'
-    },
-  ];
+  useEffect(() => {
+    // load conversation list from leads
+    const fetchConversations = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/leads');
+        const data = await res.json();
+        if (data.success && data.leads) {
+          const convs = data.leads.map((l: any) => ({
+            id: l._id,
+            name: l.name,
+            avatar: l.name ? l.name.split(' ').map((n: string)=>n[0]).slice(0,2).join('').toUpperCase() : 'NA',
+            lastMessage: l.interest || '',
+            time: l.lastContact || '',
+            unread: 0,
+            online: false,
+            type: l.type || 'Buying'
+          }));
+          setConversations(convs);
+          if (convs.length > 0) setSelectedChat(convs[0].id);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải conversations', err);
+      }
+    };
 
-  const messages = [
-    {
-      id: 1,
-      sender: 'customer',
-      text: 'Xin chào, laptop Dell 7490 còn hàng không ạ?',
-      time: '14:30'
-    },
-    {
-      id: 2,
-      sender: 'me',
-      text: 'Chào bạn! Vẫn còn hàng ạ. Bạn quan tâm cấu hình nào?',
-      time: '14:32'
-    },
-    {
-      id: 3,
-      sender: 'customer',
-      text: 'Em cần i5 gen 8, ram 8GB, giá khoảng 8tr được không?',
-      time: '14:35'
-    },
-    {
-      id: 4,
-      sender: 'me',
-      text: 'Có ạ, em có máy i5-8350U, RAM 8GB, SSD 256GB, màn 14 inch FHD. Giá 8.2tr bạn nhé.',
-      time: '14:36'
-    },
-    {
-      id: 5,
-      sender: 'customer',
-      text: 'Laptop còn hàng không bạn?',
-      time: '14:40'
-    },
-  ];
+    fetchConversations();
+
+    // initialize socket.io client once
+    try {
+      socketRef.current = io('http://localhost:5000');
+
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected:', socketRef.current?.id);
+      });
+
+      // server will emit 'message' events for new messages
+      socketRef.current.on('message', (m: any) => {
+        if (!m || !m._id) return;
+        if (messageIdsRef.current.has(m._id)) return; // dedupe
+        messageIdsRef.current.add(m._id);
+        const newMsg = {
+          id: m._id,
+          sender: m.sender,
+          text: m.text,
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          leadId: m.leadId,
+          attachment: m.attachment || null
+        };
+        setMessages((prev) => {
+          if (String(m.leadId) === String(selectedChat)) return [...prev, newMsg];
+          return prev;
+        });
+      });
+      socketRef.current.on('read', (payload: any) => {
+        try {
+          if (!payload || !payload.messageIds) return;
+          const ids = new Set(payload.messageIds.map((id: any) => String(id)));
+          setMessages((prev) => prev.map((msg) => ids.has(String(msg.id)) ? { ...msg, read: true } : msg));
+        } catch (e) {
+          // ignore
+        }
+      });
+    } catch (err) {
+      console.error('Socket init failed', err);
+    }
+
+    return () => {
+      try {
+        socketRef.current?.disconnect();
+        socketRef.current = null;
+      } catch (e) {
+        // noop
+      }
+    };
+  }, []);
+
+  // load messages for the selected chat
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (!selectedChat) return;
+      try {
+        const res = await fetch(`http://localhost:5000/api/messages/${selectedChat}`);
+        const data = await res.json();
+        if (data.success && data.messages) {
+          const msgs = data.messages.map((m: any) => ({
+            id: m._id,
+            sender: m.sender,
+            text: m.text,
+            time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            attachment: m.attachment || null
+          }));
+          // populate dedupe set for this chat
+          const ids = new Set<string>(msgs.map((x: any) => String(x.id)));
+          messageIdsRef.current = ids;
+          setMessages(msgs);
+        } else {
+          setMessages([]);
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải messages', err);
+        setMessages([]);
+      }
+    };
+
+    fetchMessages();
+  }, [selectedChat]);
+
+  // join socket room when selecting a chat
+  useEffect(() => {
+    if (!selectedChat) return;
+    try {
+      // reset dedupe set for this chat
+      messageIdsRef.current = new Set<string>();
+      socketRef.current?.emit('join', selectedChat);
+      // mark messages as read for this lead (server will emit read event)
+      try {
+        fetch(`http://localhost:5000/api/messages/${selectedChat}/read`, { method: 'PUT' })
+          .then(() => {})
+          .catch((e) => console.error('Mark read failed', e));
+      } catch (e) {
+        // ignore
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [selectedChat]);
+
+  // auto-scroll when messages change
+  useEffect(() => {
+    try {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [messages]);
 
   const selectedConversation = conversations.find(c => c.id === selectedChat);
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      // Handle send message
-      setMessage('');
+  const handleSendMessage = async () => {
+    if (!selectedChat) {
+      alert('Vui lòng chọn cuộc trò chuyện');
+      return;
+    }
+    if (!message.trim() && !file) return;
+
+    try {
+      const form = new FormData();
+      form.append('leadId', selectedChat);
+      form.append('sender', 'me');
+      form.append('text', message.trim() || '');
+      if (file) form.append('file', file, file.name);
+
+      const res = await fetch('http://localhost:5000/api/messages', {
+        method: 'POST',
+        body: form
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const m = data.data;
+        if (m._id) messageIdsRef.current.add(m._id);
+        const newMsg = {
+          id: m._id,
+          sender: m.sender,
+          text: m.text,
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          attachment: m.attachment || null
+        };
+        setMessages((prev) => [...prev, newMsg]);
+        setMessage('');
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        alert(data.message || 'Lỗi khi gửi tin nhắn');
+      }
+    } catch (err) {
+      console.error('Lỗi khi gửi tin nhắn', err);
+      alert('Lỗi khi gửi tin nhắn');
     }
   };
 
@@ -214,6 +320,13 @@ export function Conversations() {
                     }`}
                   >
                     <div>{msg.text}</div>
+                    {msg.attachment && (
+                      <div className="mt-2">
+                        <a href={msg.attachment.url} target="_blank" rel="noreferrer" className="underline text-sm">
+                          Tệp đính kèm: {msg.attachment.originalname || msg.attachment.filename}
+                        </a>
+                      </div>
+                    )}
                     <div
                       className={`text-xs mt-1 ${
                         msg.sender === 'me' ? 'text-blue-100' : 'text-gray-500'
@@ -224,14 +337,25 @@ export function Conversations() {
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
             <div className="p-4 border-t border-gray-200">
               <div className="flex items-end gap-2">
-                <Button variant="outline" size="icon">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    setFile(f);
+                  }}
+                />
+                <Button variant="outline" size="icon" onClick={() => fileInputRef.current?.click()}>
                   <Paperclip className="w-4 h-4" />
                 </Button>
+                {file && <div className="text-sm truncate max-w-xs">Đã chọn: {file.name}</div>}
                 <Textarea
                   placeholder="Nhập tin nhắn..."
                   value={message}
