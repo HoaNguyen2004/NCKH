@@ -1,4 +1,5 @@
-import { Target, MessageSquare, Phone, TrendingUp, Star, Clock } from 'lucide-react';
+import React from 'react';
+import { Target, MessageSquare, Phone, TrendingUp, Star, Clock, Radar } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import {
   Card,
@@ -18,6 +19,9 @@ import {
 } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback } from '../ui/avatar';
+
+// URL của trang Scraper (chạy trên port 3001)
+const SCRAPER_URL = 'http://localhost:3001';
 
 interface SalesDashboardProps {
   onNavigate?: (page: string) => void;
@@ -76,6 +80,11 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
     { task: 'Cập nhật CRM', time: '5:00 PM', status: 'completed' },
   ];
 
+  // Mở trang Scraper trong tab mới
+  const openScraperPage = () => {
+    window.open(SCRAPER_URL, '_blank');
+  };
+
   const getColorClass = (color: string) => {
     const colors: Record<string, string> = {
       blue: 'bg-blue-100 text-blue-600',
@@ -103,6 +112,14 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
             <p className="text-gray-500">{t('sales.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
+            <Button 
+              variant="default"
+              className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white"
+              onClick={openScraperPage}
+            >
+              <Radar className="w-4 h-4 mr-2" />
+              🕵️ Quét dữ liệu
+            </Button>
             <Button variant="outline">
               <MessageSquare className="w-4 h-4 mr-2" />
               {t('sales.viewAllChats')}
@@ -269,7 +286,17 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-5 gap-4 mt-6">
+        <div className="grid grid-cols-6 gap-4 mt-6">
+          <Button 
+            variant="outline" 
+            className="h-20 bg-gradient-to-br from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+            onClick={openScraperPage}
+          >
+            <div className="text-center">
+              <Radar className="w-5 h-5 mx-auto mb-1 text-purple-600" />
+              <div className="text-sm text-purple-700">Quét dữ liệu</div>
+            </div>
+          </Button>
           <Button 
             variant="outline" 
             className="h-20"

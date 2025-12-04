@@ -38,7 +38,7 @@ const startServer = async () => {
     app.use('/api/leads', require('./routes/leads'));
     app.use('/api/reports', require('./routes/reports'));
 
-    // Create HTTP server and attach Socket.IO for real-time chat
+    // Create HTTP server and attach Socket.IO for real-time
     const http = require('http');
     const { Server } = require('socket.io');
     const server = http.createServer(app);
@@ -73,6 +73,24 @@ const startServer = async () => {
 
     // Mount messages route with io so it can emit events
     app.use('/api/messages', require('./routes/messages')(io));
+
+    // ✅ Posts route với Socket.IO để emit events real-time
+    app.use('/api/posts', require('./routes/posts')(io));
+
+    // Socket events cho posts
+    io.on('connection', (socket) => {
+      console.log('📱 Client connected:', socket.id);
+      
+      // Client join room để nhận cập nhật posts
+      socket.on('posts:subscribe', () => {
+        socket.join('posts');
+        console.log(`📡 Client ${socket.id} subscribed to posts`);
+      });
+
+      socket.on('posts:unsubscribe', () => {
+        socket.leave('posts');
+      });
+    });
 
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {
