@@ -1,27 +1,22 @@
-import puppeteer from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
-import fs from "fs";
-import path from "path";
-import { emailToHash } from "./utils";
+/**
+ * Facebook Scraper Service
+ * Sử dụng Puppeteer với Network Interception để thu thập dữ liệu từ Facebook
+ */
+
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const fs = require('fs');
+const path = require('path');
+const md5 = require('md5');
 
 puppeteer.use(StealthPlugin());
 
-function delay(ms: number) {
+function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export interface MarketplaceItem {
-  title: string;
-  price: string;
-  location: string;
-  fullText: string;
-  url: string;
-  image: string;
-  keyword: string;
-  type: 'marketplace' | 'group_post' | 'newsfeed';
-  uid?: string;
-  author?: string;
-  timestamp?: string;
+function emailToHash(email) {
+  return md5(email.trim().toLowerCase());
 }
 
 /**
@@ -35,7 +30,6 @@ const NETWORK_SPY_CODE = `
   
   // Hàm kiểm tra JSON có chứa dữ liệu bài viết không
   function isRelevantData(str) {
-    // Pattern cho Newsfeed trang chủ
     const patterns = [
       'CometFeedUnit',
       'GroupFeed', 
@@ -53,12 +47,10 @@ const NETWORK_SPY_CODE = `
       'feedback_context'
     ];
     
-    // Kiểm tra pattern
     for (const p of patterns) {
       if (str.includes(p)) return true;
     }
     
-    // Kiểm tra có phải là post/story data
     if ((str.includes('story') || str.includes('post')) && 
         (str.includes('message') || str.includes('text')) &&
         (str.includes('wwwURL') || str.includes('actors') || str.includes('creation_time'))) {
@@ -75,12 +67,10 @@ const NETWORK_SPY_CODE = `
     
     try {
       const url = typeof input === 'string' ? input : input.url;
-      // Chỉ bắt các request graphql của Facebook
       if (url.includes('graphql') || url.includes('api/graphql')) {
         const clone = response.clone();
         const text = await clone.text();
         
-        // Facebook trả về NDJSON (nhiều dòng JSON)
         const lines = text.split('\\n');
         lines.forEach(line => {
           if (line.trim().startsWith('{')) {
@@ -112,7 +102,6 @@ const NETWORK_SPY_CODE = `
   XMLHttpRequest.prototype.send = function() {
     this.addEventListener('load', function() {
       try {
-        // Chỉ bắt graphql requests
         if (this._url && (this._url.includes('graphql') || this._url.includes('api/graphql'))) {
           if (this.responseText) {
             const lines = this.responseText.split('\\n');
@@ -135,28 +124,25 @@ const NETWORK_SPY_CODE = `
     return originalXHRSend.apply(this, arguments);
   };
   
-  console.log('[NetworkSpy] Đã kích hoạt bắt gói tin! (Enhanced for Homepage)');
+  console.log('[NetworkSpy] Đã kích hoạt bắt gói tin!');
 })();
 `;
 
 /**
- * HÀM TÌM ẢNH ĐỆ QUY - Tìm URL ảnh trong object phức tạp
+ * HÀM TÌM ẢNH ĐỆ QUY
  */
-function findImageUrl(obj: any, depth: number = 0): string {
+function findImageUrl(obj, depth = 0) {
   if (!obj || typeof obj !== 'object' || depth > 15) return "";
   
-  // Các key thường chứa URL ảnh
   const imageKeys = ['uri', 'url', 'src'];
   const containerKeys = ['image', 'photo', 'media', 'thumbnail', 'preview_image', 'attached_photo'];
   
-  // Kiểm tra trực tiếp
   for (const key of imageKeys) {
     if (typeof obj[key] === 'string' && obj[key].includes('fbcdn')) {
       return obj[key];
     }
   }
   
-  // Kiểm tra trong các container
   for (const key of containerKeys) {
     if (obj[key]) {
       const found = findImageUrl(obj[key], depth + 1);
@@ -164,7 +150,6 @@ function findImageUrl(obj: any, depth: number = 0): string {
     }
   }
   
-  // Kiểm tra attachments
   if (obj.attachments && Array.isArray(obj.attachments)) {
     for (const att of obj.attachments) {
       const found = findImageUrl(att, depth + 1);
@@ -172,7 +157,6 @@ function findImageUrl(obj: any, depth: number = 0): string {
     }
   }
   
-  // Kiểm tra all_subattachments
   if (obj.all_subattachments?.nodes && Array.isArray(obj.all_subattachments.nodes)) {
     for (const node of obj.all_subattachments.nodes) {
       const found = findImageUrl(node, depth + 1);
@@ -180,7 +164,6 @@ function findImageUrl(obj: any, depth: number = 0): string {
     }
   }
   
-  // Kiểm tra styles
   if (obj.styles?.attachment) {
     const found = findImageUrl(obj.styles.attachment, depth + 1);
     if (found) return found;
@@ -190,70 +173,57 @@ function findImageUrl(obj: any, depth: number = 0): string {
 }
 
 /**
- * HÀM QUAN TRỌNG: Phân tích JSON thô từ Facebook thành dữ liệu sạch
- * Cải tiến theo cách làm của codemau - duyệt đệ quy sâu hơn
+ * Phân tích JSON thô từ Facebook thành dữ liệu sạch
  */
-function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
-  const results: MarketplaceItem[] = [];
-  const seenUrls = new Set<string>();
+function parseFacebookJson(jsonBody, keyword) {
+  const results = [];
+  const seenUrls = new Set();
 
-  // Hàm đệ quy để tìm các node bài viết
-  function traverse(obj: any, depth: number = 0) {
+  function traverse(obj, depth = 0) {
     if (!obj || typeof obj !== 'object' || depth > 50) return;
 
-    // Pattern 1: CometFeedUnit với comet_sections
     if (obj?.comet_sections?.content?.story) {
       extractFromCometSections(obj);
     }
 
-    // Pattern 2: Story trực tiếp
     if (obj?.story?.message?.text && obj?.story?.wwwURL) {
       extractFromStory(obj.story);
     }
 
-    // Pattern 3: Node với __typename là Story
     if (obj?.__typename === 'Story' && obj?.message?.text) {
       extractFromStoryNode(obj);
     }
 
-    // Pattern 4: GroupFeed nodes
     if (obj?.node?.__typename === 'Story') {
       extractFromStoryNode(obj.node);
     }
 
-    // Pattern 5: Feed edges
     if (obj?.edges && Array.isArray(obj.edges)) {
-      obj.edges.forEach((edge: any) => {
+      obj.edges.forEach((edge) => {
         if (edge?.node) traverse(edge.node, depth + 1);
       });
     }
 
-    // Pattern 6: Homepage Feed (CometNewsFeed, FBFeed)
     if (obj?.feedback_context?.story) {
       extractFromStoryNode(obj.feedback_context.story);
     }
 
-    // Pattern 7: attached_story (Shared posts)
     if (obj?.attached_story?.message?.text) {
       extractFromStoryNode(obj.attached_story);
     }
 
-    // Pattern 8: comet_feed_ufi_container
     if (obj?.comet_feed_ufi_container?.feedback?.story) {
       extractFromStoryNode(obj.comet_feed_ufi_container.feedback.story);
     }
 
-    // Pattern 9: Units trong feed
     if (obj?.units && Array.isArray(obj.units)) {
-      obj.units.forEach((unit: any) => traverse(unit, depth + 1));
+      obj.units.forEach((unit) => traverse(unit, depth + 1));
     }
 
-    // Pattern 10: data -> node (Common homepage pattern)
     if (obj?.data?.node?.__typename === 'Story') {
       extractFromStoryNode(obj.data.node);
     }
 
-    // Tiếp tục đệ quy xuống các node con
     if (Array.isArray(obj)) {
       obj.forEach(item => traverse(item, depth + 1));
     } else {
@@ -261,13 +231,12 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
     }
   }
 
-  function extractFromCometSections(obj: any) {
+  function extractFromCometSections(obj) {
     try {
       const story = obj.comet_sections.content.story;
       const contextLayout = obj.comet_sections.context_layout?.story;
       const footer = obj.comet_sections.footer?.story;
 
-      // Lấy nội dung text
       let text = "";
       if (story?.message?.text) {
         text = story.message.text;
@@ -277,7 +246,6 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
 
       if (!text || text.length < 5) return;
 
-      // Lấy thông tin người đăng
       let author = "Unknown";
       let uid = "";
       try {
@@ -289,61 +257,22 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
         }
       } catch (e) {}
 
-        // Lấy ảnh - Sử dụng hàm tìm đệ quy
       let image = "";
       try {
-        // Thử tìm trong story trước
         image = findImageUrl(story);
-        
-        // Nếu không có, thử tìm trong obj gốc
         if (!image) {
           image = findImageUrl(obj);
         }
-        
-        // Thử các path cụ thể
-        if (!image) {
-          const attachments = story?.attachments || [];
-          for (const att of attachments) {
-            // Ảnh đơn
-            if (att?.media?.image?.uri) {
-              image = att.media.image.uri;
-              break;
-            }
-            // Ảnh trong photo
-            if (att?.media?.photo?.image?.uri) {
-              image = att.media.photo.image.uri;
-              break;
-            }
-            // Album ảnh
-            if (att?.all_subattachments?.nodes?.length > 0) {
-              image = att.all_subattachments.nodes[0]?.media?.image?.uri || "";
-              break;
-            }
-            // Style attachment
-            if (att?.styles?.attachment?.media?.image?.uri) {
-              image = att.styles.attachment.media.image.uri;
-              break;
-            }
-            // Comet sections trong attachment
-            if (att?.comet_product_tag_feed_overlay_renderer?.attachment?.media?.image?.uri) {
-              image = att.comet_product_tag_feed_overlay_renderer.attachment.media.image.uri;
-              break;
-            }
-          }
-        }
       } catch (e) {}
 
-      // Lấy URL bài viết
       let url = "";
       try {
-        // Thử nhiều path khác nhau
         url = story?.wwwURL || 
               story?.url ||
               contextLayout?.comet_sections?.metadata?.[0]?.story?.url ||
               footer?.url ||
               "";
               
-        // Nếu vẫn không có, tìm trong post_id
         if (!url && story?.post_id) {
           url = `https://www.facebook.com/${story.post_id}`;
         }
@@ -352,7 +281,6 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
         }
       } catch (e) {}
 
-      // Lấy timestamp
       let timestamp = "";
       try {
         const creationTime = story?.creation_time || contextLayout?.creation_time;
@@ -361,7 +289,6 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
         }
       } catch (e) {}
 
-      // Đoán giá từ text
       const priceRegex = /[\d\.\,]+\s*(tr|triệu|k|đ|vnđ|usd|\$)/gi;
       const priceMatch = text.match(priceRegex);
       const price = priceMatch ? priceMatch[0] : "";
@@ -378,14 +305,14 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
           author: author,
           uid: uid,
           keyword: keyword,
-          type: 'group_post' as const,
+          type: 'group_post',
           timestamp: timestamp
         });
       }
     } catch (e) {}
   }
 
-  function extractFromStory(story: any) {
+  function extractFromStory(story) {
     try {
       const text = story?.message?.text || "";
       if (!text || text.length < 5) return;
@@ -403,7 +330,6 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
         }
       } catch (e) {}
 
-      // Tìm ảnh bằng hàm đệ quy
       let image = findImageUrl(story);
 
       const priceRegex = /[\d\.\,]+\s*(tr|triệu|k|đ|vnđ|usd|\$)/gi;
@@ -421,12 +347,12 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
         author: author,
         uid: uid,
         keyword: keyword,
-        type: 'group_post' as const
+        type: 'group_post'
       });
     } catch (e) {}
   }
 
-  function extractFromStoryNode(node: any) {
+  function extractFromStoryNode(node) {
     try {
       const text = node?.message?.text || 
                    node?.comet_sections?.content?.story?.message?.text || 
@@ -434,14 +360,12 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
                    "";
       if (!text || text.length < 5) return;
 
-      // Cải tiến: Tìm URL từ nhiều nguồn
       let url = node?.wwwURL || 
                 node?.url || 
                 node?.permalink_url ||
                 node?.share_url ||
                 "";
       
-      // Nếu không có URL, thử tạo từ post_id hoặc story id
       if (!url) {
         const postId = node?.post_id || node?.id || node?.legacy_story_hydrated_id;
         if (postId) {
@@ -461,21 +385,18 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
           author = actors[0]?.name || "Unknown";
           uid = actors[0]?.id || "";
         }
-        // Thử lấy từ owner
         if (author === "Unknown" && node?.owner) {
           author = node.owner.name || "Unknown";
           uid = node.owner.id || "";
         }
       } catch (e) {}
 
-      // Tìm ảnh bằng hàm đệ quy
       let image = findImageUrl(node);
 
       const priceRegex = /[\d\.\,]+\s*(tr|triệu|k|đ|vnđ|usd|\$)/gi;
       const priceMatch = text.match(priceRegex);
       const price = priceMatch ? priceMatch[0] : "";
 
-      // Lấy timestamp nếu có
       let timestamp = "";
       try {
         const creationTime = node?.creation_time || node?.created_time;
@@ -495,7 +416,7 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
         author: author,
         uid: uid,
         keyword: keyword,
-        type: 'newsfeed' as const,
+        type: 'newsfeed',
         timestamp: timestamp
       });
     } catch (e) {}
@@ -507,7 +428,7 @@ function parseFacebookJson(jsonBody: any, keyword: string): MarketplaceItem[] {
 
 const COOKIE_DIR = path.join(__dirname, "..", "cookies");
 
-function getCookiePath(email: string): string {
+function getCookiePath(email) {
   const hash = emailToHash(email);
   if (!fs.existsSync(COOKIE_DIR)) {
     fs.mkdirSync(COOKIE_DIR, { recursive: true });
@@ -515,8 +436,10 @@ function getCookiePath(email: string): string {
   return path.join(COOKIE_DIR, `fb_${hash}.json`);
 }
 
-// BƯỚC 1: Login & Save Cookie (Giữ nguyên)
-export async function initLoginAndSaveCookies(email: string): Promise<void> {
+/**
+ * BƯỚC 1: Login & Save Cookie
+ */
+async function initLoginAndSaveCookies(email) {
   const cookiePath = getCookiePath(email);
   const browser = await puppeteer.launch({
     headless: false,
@@ -528,7 +451,7 @@ export async function initLoginAndSaveCookies(email: string): Promise<void> {
   console.log("🔵 Mở trang login...");
   await page.goto("https://www.facebook.com/login", { waitUntil: "networkidle2" });
   console.log("👉 Hãy login trong 30s...");
-  await delay(30000); // 30 giây để đăng nhập
+  await delay(30000);
   
   const cookies = await page.cookies();
   fs.writeFileSync(cookiePath, JSON.stringify(cookies, null, 2), "utf-8");
@@ -536,21 +459,18 @@ export async function initLoginAndSaveCookies(email: string): Promise<void> {
   await browser.close();
 }
 
-// BƯỚC 2: Cào dữ liệu (URL Search Mode) - SỬ DỤNG NETWORK INTERCEPTION
-export async function scrapeWithSearch(
-  email: string,
-  baseUrl: string,
-  keywords: string[]
-): Promise<MarketplaceItem[]> {
+/**
+ * BƯỚC 2: Cào dữ liệu (URL Search Mode)
+ */
+async function scrapeWithSearch(email, baseUrl, keywords) {
   const cookiePath = getCookiePath(email);
   if (!fs.existsSync(cookiePath)) throw new Error("NO_COOKIE");
 
-  // Chuẩn hóa URL (bỏ dấu / ở cuối nếu có)
   const cleanBaseUrl = baseUrl.replace(/\/$/, "");
   const isGroup = cleanBaseUrl.includes("/groups/");
   const isMarketplace = cleanBaseUrl.includes("/marketplace");
 
-  console.log(`ℹ️ Chế độ: ${isGroup ? "GROUP SEARCH" : isMarketplace ? "MARKETPLACE SEARCH" : "SEARCH"} (Network Mode)`);
+  console.log(`ℹ️ Chế độ: ${isGroup ? "GROUP SEARCH" : isMarketplace ? "MARKETPLACE SEARCH" : "SEARCH"}`);
 
   const browser = await puppeteer.launch({
     headless: false,
@@ -569,26 +489,21 @@ export async function scrapeWithSearch(
   const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf-8"));
   await page.setCookie(...cookies);
 
-  // TIÊM NETWORK SPY TRƯỚC KHI LOAD TRANG
   await page.evaluateOnNewDocument(NETWORK_SPY_CODE);
 
-  let allItems: MarketplaceItem[] = [];
+  let allItems = [];
 
-  // --- LOOP TỪ KHÓA ---
   for (const kw of keywords) {
     console.log(`\n🔎 Đang xử lý từ khóa: "${kw}" ...`);
 
     try {
-      let searchUrl: string;
+      let searchUrl;
       
       if (isGroup) {
-        // GROUP SEARCH URL
         searchUrl = `${cleanBaseUrl}/search/?q=${encodeURIComponent(kw)}`;
       } else if (isMarketplace) {
-        // MARKETPLACE SEARCH URL
         searchUrl = `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(kw)}`;
       } else {
-        // DEFAULT SEARCH
         searchUrl = `${cleanBaseUrl}/search/?q=${encodeURIComponent(kw)}`;
       }
 
@@ -598,16 +513,13 @@ export async function scrapeWithSearch(
       
       if (page.url().includes("login")) throw new Error("COOKIE_INVALID");
 
-      // Reset captured packets cho từ khóa mới
       await page.evaluate(() => {
-        (window as any)._capturedPackets = [];
-        (window as any)._capturedCount = 0;
+        window._capturedPackets = [];
+        window._capturedCount = 0;
       });
 
-      // Đợi trang load xong
       await delay(3000);
 
-      // Scroll để load thêm kết quả
       console.log("   ⏳ Đang cuộn trang để load kết quả...");
       const scrollTimes = isMarketplace ? 5 : 4;
       
@@ -616,42 +528,39 @@ export async function scrapeWithSearch(
         console.log(`   ⬇️ Scroll lần ${i + 1}/${scrollTimes}...`);
         await delay(2000);
 
-        // Lấy packets đã bắt được
         const result = await page.evaluate(() => {
-          const data = (window as any)._capturedPackets || [];
-          const count = (window as any)._capturedCount || 0;
-          (window as any)._capturedPackets = []; // Reset
+          const data = window._capturedPackets || [];
+          const count = window._capturedCount || 0;
+          window._capturedPackets = [];
           return { packets: data, totalCount: count };
         });
 
         if (result.packets && result.packets.length > 0) {
           console.log(`   📦 Bắt được ${result.packets.length} gói tin JSON`);
-          result.packets.forEach((pkg: any) => {
+          result.packets.forEach((pkg) => {
             const parsedItems = parseFacebookJson(pkg, kw);
             allItems.push(...parsedItems);
           });
         }
       }
 
-      // Lấy nốt packets còn lại
       const finalResult = await page.evaluate(() => {
-        const data = (window as any)._capturedPackets || [];
+        const data = window._capturedPackets || [];
         return data;
       });
       
       if (finalResult.length > 0) {
-        finalResult.forEach((pkg: any) => {
+        finalResult.forEach((pkg) => {
           const parsedItems = parseFacebookJson(pkg, kw);
           allItems.push(...parsedItems);
         });
       }
 
-      // Nếu Network không bắt được, fallback về DOM selector cho Marketplace
       if (allItems.length === 0 && isMarketplace) {
         console.log("   ⚠️ Network không bắt được, thử DOM selector...");
         const mpItems = await page.$$eval('a[href*="/marketplace/item"]', (els, currentKw) => 
           els.map((el) => {
-            const anchor = el as HTMLAnchorElement;
+            const anchor = el;
             const img = anchor.querySelector("img");
             const text = anchor.innerText || "";
             const lines = text.split("\n");
@@ -663,7 +572,7 @@ export async function scrapeWithSearch(
               url: anchor.href,
               image: img ? img.src : "",
               keyword: currentKw,
-              type: 'marketplace' as const
+              type: 'marketplace'
             };
           }), kw
         );
@@ -679,7 +588,7 @@ export async function scrapeWithSearch(
   }
 
   // Deduplicate
-  const map = new Map<string, MarketplaceItem>();
+  const map = new Map();
   allItems.forEach((it) => {
     const cleanUrl = it.url.split('?')[0]; 
     if (cleanUrl) {
@@ -696,20 +605,9 @@ export async function scrapeWithSearch(
 }
 
 /**
- * HÀM MỚI: Cào Feed (Group Feed hoặc Newsfeed) và lọc theo từ khóa
- * Áp dụng kỹ thuật Network Interception giống codemau
- * 
- * @param email - Email đã login
- * @param feedUrl - URL của Group hoặc "https://www.facebook.com" cho Newsfeed
- * @param keywords - Danh sách từ khóa cần lọc
- * @param scrollCount - Số lần cuộn (mặc định 10)
+ * Cào Feed (Group Feed hoặc Newsfeed) và lọc theo từ khóa
  */
-export async function scrapeFeedByKeywords(
-  email: string,
-  feedUrl: string,
-  keywords: string[],
-  scrollCount: number = 10
-): Promise<MarketplaceItem[]> {
+async function scrapeFeedByKeywords(email, feedUrl, keywords, scrollCount = 10) {
   const cookiePath = getCookiePath(email);
   if (!fs.existsSync(cookiePath)) throw new Error("NO_COOKIE");
 
@@ -724,24 +622,18 @@ export async function scrapeFeedByKeywords(
   });
 
   const page = await browser.newPage();
-  
-  // Set viewport lớn để load nhiều bài hơn
   await page.setViewport({ width: 1920, height: 1080 });
-  
   await page.setUserAgent(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
   );
 
-  // Nạp cookie
   const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf-8"));
   await page.setCookie(...cookies);
 
-  // TIÊM NETWORK SPY TRƯỚC KHI LOAD TRANG
   await page.evaluateOnNewDocument(NETWORK_SPY_CODE);
 
-  let allItems: MarketplaceItem[] = [];
+  let allItems = [];
   
-  // Nhận diện URL trang chủ Facebook (bao gồm các biến thể với query params)
   const normalizedUrl = feedUrl.split('?')[0].replace(/\/$/, '');
   const isNewsfeed = normalizedUrl === "https://www.facebook.com" || 
                      feedUrl.includes("?ref=homescreenpwa") ||
@@ -753,18 +645,14 @@ export async function scrapeFeedByKeywords(
   try {
     await page.goto(feedUrl, { waitUntil: "networkidle2", timeout: 60000 });
     
-    // Kiểm tra login
     if (page.url().includes("login")) throw new Error("COOKIE_INVALID");
 
-    // Đợi feed load
     await delay(3000);
 
     console.log(`⏳ Đang cuộn trang ${scrollCount} lần để load bài viết...`);
     console.log(`📋 Từ khóa cần lọc: ${keywords.join(", ")}`);
     
-    // Cuộn trang nhiều lần
     for (let i = 0; i < scrollCount; i++) {
-      // Cuộn mượt hơn
       await page.evaluate(() => {
         window.scrollBy({ top: 1200, behavior: 'smooth' });
       });
@@ -772,37 +660,34 @@ export async function scrapeFeedByKeywords(
       console.log(`   ⬇️ Scroll lần ${i + 1}/${scrollCount}...`);
       await delay(2000);
 
-      // Lấy packets đã bắt được
       const result = await page.evaluate(() => {
-        const data = (window as any)._capturedPackets || [];
-        const count = (window as any)._capturedCount || 0;
-        (window as any)._capturedPackets = []; // Reset
+        const data = window._capturedPackets || [];
+        const count = window._capturedCount || 0;
+        window._capturedPackets = [];
         return { packets: data, totalCount: count };
       });
 
       if (result.packets && result.packets.length > 0) {
         console.log(`   📦 Bắt được ${result.packets.length} gói tin JSON (Tổng: ${result.totalCount})`);
-        result.packets.forEach((pkg: any) => {
+        result.packets.forEach((pkg) => {
           const parsedItems = parseFacebookJson(pkg, "");
           allItems.push(...parsedItems);
         });
       }
 
-      // Mỗi 3 lần scroll, đợi thêm để tránh rate limit
       if ((i + 1) % 3 === 0) {
         console.log(`   ⏸️ Đợi thêm để tránh rate limit...`);
         await delay(1500);
       }
     }
 
-    // Lấy nốt packets còn lại
     const finalResult = await page.evaluate(() => {
-      const data = (window as any)._capturedPackets || [];
+      const data = window._capturedPackets || [];
       return data;
     });
     
     if (finalResult.length > 0) {
-      finalResult.forEach((pkg: any) => {
+      finalResult.forEach((pkg) => {
         const parsedItems = parseFacebookJson(pkg, "");
         allItems.push(...parsedItems);
       });
@@ -818,18 +703,14 @@ export async function scrapeFeedByKeywords(
 
   console.log(`\n📊 Đã parse được ${allItems.length} bài viết từ JSON`);
 
-  // ========================================
-  // LỌC THEO TỪ KHÓA (QUAN TRỌNG!)
-  // ========================================
+  // Lọc theo từ khóa
   const keywordsLower = keywords.map(k => k.toLowerCase().trim()).filter(k => k.length > 0);
   
   const filteredItems = allItems.filter(item => {
     const textLower = item.fullText.toLowerCase();
     const titleLower = item.title.toLowerCase();
     
-    // Kiểm tra xem bài viết có chứa ít nhất 1 từ khóa không
     for (const kw of keywordsLower) {
-      // Hỗ trợ tìm kiếm nhiều từ (ví dụ: "iphone 15 pro max")
       const kwParts = kw.split(/\s+/);
       const allPartsMatch = kwParts.every(part => 
         textLower.includes(part) || titleLower.includes(part)
@@ -843,11 +724,11 @@ export async function scrapeFeedByKeywords(
     return false;
   });
 
-  // Deduplicate theo URL
-  const map = new Map<string, MarketplaceItem>();
+  // Deduplicate
+  const map = new Map();
   filteredItems.forEach((it) => {
     if (it.url) {
-      const cleanUrl = it.url.split('?')[0]; // Bỏ query params
+      const cleanUrl = it.url.split('?')[0];
       map.set(cleanUrl, it);
     }
   });
@@ -861,3 +742,11 @@ export async function scrapeFeedByKeywords(
 
   return uniqueItems;
 }
+
+module.exports = {
+  initLoginAndSaveCookies,
+  scrapeWithSearch,
+  scrapeFeedByKeywords,
+  getCookiePath
+};
+

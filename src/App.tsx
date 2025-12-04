@@ -18,6 +18,7 @@ import { ContentFilter } from './components/pages/ContentFilter';
 import { AISettings } from './components/pages/AISettings';
 import { DataSources } from './components/pages/DataSources';
 import { History } from './components/pages/History';
+import { Scraper } from './components/pages/Scraper';
 
 // Backend API URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -496,6 +497,8 @@ export default function App() {
         return <UserManagement />;
       case 'posts':
         return <PostsManagement posts={posts} socketConnected={socketConnected} onRefresh={fetchPosts} />;
+      case 'scraper':
+        return <Scraper onNavigateToPosts={() => setCurrentPage('posts')} />;
       case 'products':
         return <ProductsManagement />;
       case 'leads':
