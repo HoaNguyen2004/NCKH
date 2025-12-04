@@ -1,0 +1,62 @@
+[
+  {
+    "name": "wd",
+    "value": "929x966",
+    "domain": ".facebook.com",
+    "path": "/",
+    "expires": 1765444407,
+    "size": 9,
+    "httpOnly": false,
+    "secure": true,
+    "session": false,
+    "sameSite": "Lax",
+    "sameParty": false,
+    "sourceScheme": "Secure",
+    "sourcePort": 443
+  },
+  {
+    "name": "fr",
+    "value": "09DAJ0ePPt2kXPJix..BpMVCg..AAA.0.0.BpMVCg.AWeUm9U-r8rg-FAw-XR1oTcvmwU",
+    "domain": ".facebook.com",
+    "path": "/",
+    "expires": 1772615578.458704,
+    "size": 71,
+    "httpOnly": true,
+    "secure": true,
+    "session": false,
+    "sameSite": "None",
+    "sameParty": false,
+    "sourceScheme": "Secure",
+    "sourcePort": 443
+  },
+  {
+    "name": "sb",
+    "value": "oFAxafZo7wJmxiiX8TNC7ETH",
+    "domain": ".facebook.com",
+    "path": "/",
+    "expires": 1799399578.458728,
+    "size": 26,
+    "httpOnly": true,
+    "secure": true,
+    "session": false,
+    "sameSite": "None",
+    "sameParty": false,
+    "sourceScheme": "Secure",
+    "sourcePort": 443
+  },
+  {
+    "name": "datr",
+    "value": "oFAxaekgA91lCVE703HPIfXM",
+    "domain": ".facebook.com",
+    "path": "/",
+    "expires": 1799399578.458455,
+    "size": 28,
+    "httpOnly": true,
+    "secure": true,
+    "session": false,
+    "sameSite": "None",
+    "sameParty": false,
+    "sourceScheme": "Secure",
+    "sourcePort": 443
+  }
+]

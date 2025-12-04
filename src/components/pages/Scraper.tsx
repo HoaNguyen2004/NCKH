@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Search, Play, ExternalLink, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Play, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -11,6 +11,16 @@ import { useLanguage } from '../../contexts/LanguageContext';
 interface ScraperProps {
   onNavigateToPosts?: () => void;
 }
+
+// Lấy URL API - tất cả đều dùng chung 1 server
+const getApiUrl = () => {
+  return import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+};
+
+// Scraper API cũng dùng chung server
+const getScraperUrl = () => {
+  return `${getApiUrl()}/scraper`;
+};
 
 export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const { t } = useLanguage();
@@ -25,8 +35,35 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const scraperUrl = getScraperUrl();
 
-  const SCRAPER_URL = 'http://localhost:3001';
+  // Kiểm tra trạng thái server khi component mount
+  useEffect(() => {
+    checkServerStatus();
+  }, [scraperUrl]);
+
+  const checkServerStatus = async () => {
+    setServerStatus('checking');
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const res = await fetch(`${scraperUrl}/health`, {
+        signal: controller.signal
+      }).catch(() => null);
+      
+      clearTimeout(timeoutId);
+      
+      if (res && res.ok) {
+        setServerStatus('online');
+      } else {
+        setServerStatus('offline');
+      }
+    } catch {
+      setServerStatus('offline');
+    }
+  };
 
   const handleLogin = async () => {
     if (!email) {
@@ -40,7 +77,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setMessage('Đang mở Chrome để đăng nhập...');
 
     try {
-      const res = await fetch(`${SCRAPER_URL}/api/init-login`, {
+      const res = await fetch(`${scraperUrl}/init-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -56,7 +93,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       }
     } catch (err) {
       setStatus('error');
-      setMessage('Không thể kết nối đến scraper server. Hãy chắc chắn server đang chạy tại port 3001.');
+      setMessage(`Không thể kết nối đến scraper server (${scraperUrl}). Hãy kiểm tra server đang chạy.`);
     }
 
     setIsLoading(false);
@@ -74,7 +111,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setMessage('Đang quét dữ liệu...');
 
     try {
-      const res = await fetch(`${SCRAPER_URL}/api/scrape-filter`, {
+      const res = await fetch(`${scraperUrl}/scrape-filter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, url, keywordsText: keywords })
@@ -109,7 +146,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setMessage('Đang quét feed...');
 
     try {
-      const res = await fetch(`${SCRAPER_URL}/api/scrape-feed`, {
+      const res = await fetch(`${scraperUrl}/scrape-feed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, feedUrl, keywordsText: feedKeywords, scrollCount })
@@ -143,7 +180,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setMessage('Đang gửi dữ liệu lên server...');
 
     try {
-      const response = await fetch('http://localhost:5000/api/posts', {
+      const response = await fetch(`${getApiUrl()}/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: results })
@@ -169,10 +206,6 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setIsLoading(false);
   };
 
-  const openExternalScraper = () => {
-    window.open(SCRAPER_URL, '_blank', 'width=1000,height=800');
-  };
-
   return (
     <main className="flex-1 overflow-auto">
       <div className="p-8">
@@ -182,11 +215,40 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
             <h1 className="text-2xl font-bold text-gray-900">{t('sidebar.scraper')}</h1>
             <p className="text-gray-600">Thu thập dữ liệu từ Facebook Groups và Marketplace</p>
           </div>
-          <Button onClick={openExternalScraper} variant="outline">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Mở Scraper đầy đủ
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Server Status */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
+              serverStatus === 'online' ? 'bg-green-100 text-green-700' :
+              serverStatus === 'offline' ? 'bg-red-100 text-red-700' :
+              'bg-yellow-100 text-yellow-700'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                serverStatus === 'online' ? 'bg-green-500' :
+                serverStatus === 'offline' ? 'bg-red-500' :
+                'bg-yellow-500 animate-pulse'
+              }`} />
+              {serverStatus === 'online' ? 'Server Online' :
+               serverStatus === 'offline' ? 'Server Offline' :
+               'Đang kiểm tra...'}
+            </div>
+            <Button variant="outline" onClick={checkServerStatus}>
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
+
+        {/* Offline Warning */}
+        {serverStatus === 'offline' && (
+          <div className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5" />
+              <div>
+                <p className="font-medium">Backend server không hoạt động</p>
+                <p className="text-sm">Hãy chạy backend server trước khi sử dụng tính năng này: <code className="bg-amber-100 px-2 py-1 rounded">cd server && npm start</code></p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status Message */}
         {message && (
@@ -227,7 +289,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               </div>
               <Button 
                 onClick={handleLogin} 
-                disabled={isLoading}
+                disabled={isLoading || serverStatus === 'offline'}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -306,7 +368,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 </div>
                 <Button 
                   onClick={handleSearch} 
-                  disabled={isLoading}
+                  disabled={isLoading || serverStatus === 'offline'}
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
@@ -379,7 +441,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 </div>
                 <Button 
                   onClick={handleScrapeFeed} 
-                  disabled={isLoading}
+                  disabled={isLoading || serverStatus === 'offline'}
                   className="w-full bg-orange-600 hover:bg-orange-700"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
@@ -449,4 +511,3 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     </main>
   );
 }
-

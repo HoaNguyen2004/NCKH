@@ -9,14 +9,19 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.3.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
+    "md5": "^2.3.0",
     "mongoose": "^8.19.3",
     "multer": "^2.0.2",
     "nodemailer": "^6.10.1",
+    "puppeteer": "^21.11.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1"
   },
