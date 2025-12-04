@@ -19,42 +19,59 @@ import { AISettings } from './components/pages/AISettings';
 import { DataSources } from './components/pages/DataSources';
 import { History } from './components/pages/History';
 import { Scraper } from './components/pages/Scraper';
+import { login as apiLogin, register as apiRegister } from './utils/api';
 
 // Backend API URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
+type UiRole = 'admin' | 'manager' | 'sales';
+
+// Map role lưu trong MongoDB -> role dùng để hiển thị dashboard
+function mapBackendRoleToUiRole(role?: string | null): UiRole {
+  if (role === 'admin') return 'admin';
+  if (role === 'sales') return 'sales';
+  // Tất cả role khác (manager, user, ...) đều vào trang Manager
+  return 'manager';
+}
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const [userRole, setUserRole] = useState<'admin' | 'manager' | 'sales'>('admin');
+  const [userRole, setUserRole] = useState<UiRole>('admin');
   const [posts, setPosts] = useState<any[]>([]);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
-  const handleLogin = (email: string, password: string, remember: boolean = false) => {
-    // Simple demo authentication with role detection
-    if (email && password) {
+  const handleLogin = async (email: string, password: string, remember: boolean = false) => {
+    try {
+      setAuthError(null);
+      setAuthLoading(true);
+      const result = await apiLogin({ email, password });
+      const uiRole = mapBackendRoleToUiRole(result.user?.role);
+
       setIsLoggedIn(true);
       setShowRegister(false);
-      
-      // Detect role from email
-      if (email.includes('admin')) {
-        setUserRole('admin');
-      } else if (email.includes('manager')) {
-        setUserRole('manager');
-      } else if (email.includes('sales')) {
-        setUserRole('sales');
-      }
-      // Persist session when requested
+      setUserRole(uiRole);
+
       if (remember) {
         try {
-          localStorage.setItem('aifilter.session', JSON.stringify({ isLoggedIn: true, userRole: email.includes('admin') ? 'admin' : email.includes('manager') ? 'manager' : email.includes('sales') ? 'sales' : 'sales' }));
-        } catch (e) {
+          localStorage.setItem(
+            'aifilter.session',
+            JSON.stringify({ isLoggedIn: true, userRole: uiRole })
+          );
+        } catch {
           // ignore
         }
       }
+    } catch (err: any) {
+      console.error('Login failed', err);
+      setAuthError(err?.message || 'Đăng nhập thất bại');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -434,19 +451,44 @@ export default function App() {
     };
   }, []);
 
-  const handleRegister = (userData: any) => {
-    // Simple demo registration - in real app, would call API
-    console.log('Registered user:', userData);
-    setIsLoggedIn(true);
-    setShowRegister(false);
-    
-    // Set role from registration
-    if (userData.role === 'admin') {
-      setUserRole('admin');
-    } else if (userData.role === 'manager') {
-      setUserRole('manager');
-    } else {
-      setUserRole('sales');
+  const handleRegister = async (userData: any) => {
+    try {
+      setAuthError(null);
+      setAuthLoading(true);
+
+      // Map lựa chọn UI -> role key lưu trong MongoDB
+      // sales  -> role 'sales'  -> vào trang Sales
+      // các lựa chọn khác -> role 'manager' hoặc 'user' nhưng UI đều vào trang Manager
+      let backendRole: string = 'manager';
+      if (userData.role === 'sales') {
+        backendRole = 'sales';
+      } else if (userData.role === 'student') {
+        backendRole = 'user';
+      } else {
+        backendRole = 'manager'; // smb, manager, ...
+      }
+
+      const payload = { ...userData, role: backendRole };
+      const result = await apiRegister(payload);
+      const uiRole = mapBackendRoleToUiRole(result.user?.role);
+
+      setIsLoggedIn(true);
+      setShowRegister(false);
+      setUserRole(uiRole);
+
+      try {
+        localStorage.setItem(
+          'aifilter.session',
+          JSON.stringify({ isLoggedIn: true, userRole: uiRole })
+        );
+      } catch {
+        // ignore
+      }
+    } catch (err: any) {
+      console.error('Register failed', err);
+      setAuthError(err?.message || 'Đăng ký thất bại');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -455,6 +497,8 @@ export default function App() {
     setShowRegister(false);
     setCurrentPage('dashboard');
     setUserRole('admin');
+    setAuthError(null);
+    setAuthLoading(false);
     try { localStorage.removeItem('aifilter.session'); } catch (e) {}
   };
 
@@ -532,6 +576,8 @@ export default function App() {
           <Login 
             onLogin={handleLogin}
             onShowRegister={() => setShowRegister(true)}
+            error={authError || undefined}
+            loading={authLoading}
           />
         )
       ) : (

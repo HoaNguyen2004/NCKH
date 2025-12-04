@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
+const Role = require('../models/Role');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -46,13 +48,21 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ success: false, message: 'Email đã tồn tại' });
     }
 
+    // Xác định roleKey (admin, manager, sales, user, ...)
+    const roleKey = role || 'user';
+    const roleDoc = await Role.findOne({ key: roleKey });
+
     const user = await User.create({
       fullName,
       email,
       phone,
       company,
       location,
-      role: role || 'user',
+      role: roleKey,
+      roleRef: roleDoc ? roleDoc._id : undefined,
+      // Nếu muốn, có thể gán luôn permissions mặc định từ Role
+      permissions: roleDoc ? roleDoc.permissions : []
+      ,
       password
     });
 
@@ -98,19 +108,9 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', async (req, res) => {
-  try {
-    const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token) return res.status(401).json({ success: false, message: 'Thiếu token' });
-
-    const payload = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(payload.userId).select('-password');
-    if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
-    return res.json({ success: true, user });
-  } catch (err) {
-    return res.status(401).json({ success: false, message: 'Token không hợp lệ' });
-  }
+router.get('/me', requireAuth, async (req, res) => {
+  // requireAuth đã gắn req.user
+  return res.json({ success: true, user: req.user });
 });
 
 // POST /api/auth/forgot
