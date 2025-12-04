@@ -17,12 +17,13 @@ module.exports = function(io) {
   // ==========================================
   router.get('/', async (req, res) => {
     try {
+      console.log('📥 GET /api/posts request received');
       const { 
         type, 
         platform, 
         status, 
         keyword,
-        limit = 100, 
+        limit = 200, 
         skip = 0,
         sort = '-createdAt'
       } = req.query;
@@ -33,12 +34,17 @@ module.exports = function(io) {
       if (status && status !== 'all') filter.status = status;
       if (keyword) filter.keyword = { $regex: keyword, $options: 'i' };
 
+      console.log('🔍 Filter:', filter);
+
       const posts = await Post.find(filter)
         .sort(sort)
         .limit(parseInt(limit))
-        .skip(parseInt(skip));
+        .skip(parseInt(skip))
+        .lean(); // Use lean() for better performance
 
       const total = await Post.countDocuments(filter);
+
+      console.log(`✅ Found ${posts.length} posts (total: ${total})`);
 
       res.json({
         success: true,
@@ -48,7 +54,7 @@ module.exports = function(io) {
         skip: parseInt(skip)
       });
     } catch (err) {
-      console.error('Get posts error:', err);
+      console.error('❌ Get posts error:', err);
       res.status(500).json({ success: false, message: err.message });
     }
   });
@@ -69,6 +75,8 @@ module.exports = function(io) {
         Post.countDocuments({ createdAt: { $gte: today } })
       ]);
 
+      console.log(`📊 Stats: Total=${total}, Buying=${buying}, Selling=${selling}, Facebook=${facebook}, Today=${todayCount}`);
+
       res.json({
         success: true,
         stats: {
@@ -85,13 +93,35 @@ module.exports = function(io) {
   });
 
   // ==========================================
+  // GET /api/posts/test - Test endpoint để kiểm tra
+  // ==========================================
+  router.get('/test', async (req, res) => {
+    try {
+      const total = await Post.countDocuments();
+      const recent = await Post.find().sort('-createdAt').limit(5).lean();
+      
+      res.json({
+        success: true,
+        message: 'Posts API is working',
+        totalPosts: total,
+        recentPosts: recent
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // ==========================================
   // POST /api/posts - Thêm bài viết mới (từ scraper)
   // ==========================================
   router.post('/', async (req, res) => {
     try {
+      console.log('📥 Received POST /api/posts request');
       const { items } = req.body;
+      console.log(`📦 Received ${items?.length || 0} items`);
 
       if (!items || !Array.isArray(items) || items.length === 0) {
+        console.warn('⚠️ No items in request');
         return res.status(400).json({ 
           success: false, 
           message: 'Cần có mảng items chứa bài viết' 
@@ -182,11 +212,41 @@ module.exports = function(io) {
 
       // 🔥 EMIT SOCKET EVENT - Thông báo có bài viết mới
       if (results.newPosts.length > 0) {
-        io.emit('posts:new', {
-          count: results.newPosts.length,
-          posts: results.newPosts
+        // Convert Mongoose documents to plain objects
+        const postsData = results.newPosts.map(post => {
+          const postObj = post.toObject ? post.toObject() : post;
+          return {
+            _id: postObj._id,
+            id: postObj._id,
+            title: postObj.title,
+            fullContent: postObj.fullContent,
+            type: postObj.type,
+            platform: postObj.platform,
+            confidence: postObj.confidence,
+            createdAt: postObj.createdAt,
+            author: postObj.author,
+            price: postObj.price,
+            location: postObj.location,
+            category: postObj.category,
+            status: postObj.status,
+            url: postObj.url,
+            image: postObj.image
+          };
         });
-        console.log(`📡 Socket emitted: ${results.newPosts.length} new posts`);
+
+        const socketData = {
+          count: results.newPosts.length,
+          posts: postsData
+        };
+        
+        console.log(`📡 Emitting ${results.newPosts.length} new posts:`, socketData);
+        
+        // Emit đến room 'posts' và cả broadcast để đảm bảo
+        io.to('posts').emit('posts:new', socketData);
+        io.emit('posts:new', socketData); // Broadcast to all as backup
+        console.log(`✅ Socket emitted to room 'posts' and all clients`);
+      } else {
+        console.log(`⚠️ No new posts to emit (${results.duplicates} duplicates, ${results.errors} errors)`);
       }
 
       res.json({

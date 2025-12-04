@@ -80,32 +80,77 @@ export default function App() {
   // Fetch posts from API
   const fetchPosts = useCallback(async () => {
     try {
+      console.log(`📡 Fetching posts from ${API_URL}/posts`);
       const response = await fetch(`${API_URL}/posts?limit=200`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('📥 API Response:', data);
+      
       if (data.success && data.posts) {
         // Chuyển đổi từ database format sang frontend format
-        const formattedPosts = data.posts.map((post: any) => ({
-          id: post._id,
-          content: post.title,
-          fullContent: post.fullContent,
-          type: post.type,
-          platform: post.platform,
-          confidence: post.confidence + '%',
-          time: new Date(post.createdAt).toLocaleTimeString(),
-          date: new Date(post.createdAt).toLocaleDateString(),
-          author: post.author,
-          price: post.price,
-          location: post.location,
-          category: post.category,
-          status: post.status,
-          url: post.url,
-          image: post.image
-        }));
+        const formattedPosts = data.posts.map((post: any) => {
+          const createdAt = post.createdAt ? new Date(post.createdAt) : new Date();
+          return {
+            id: post._id || post.id,
+            content: post.title || post.content || '',
+            fullContent: post.fullContent || post.title || post.content || '',
+            type: post.type || 'Unknown',
+            platform: post.platform || 'Facebook',
+            confidence: typeof post.confidence === 'number' ? post.confidence + '%' : post.confidence || '85%',
+            time: createdAt.toLocaleTimeString('vi-VN'),
+            date: createdAt.toLocaleDateString('vi-VN'),
+            author: post.author || 'Unknown',
+            price: post.price || 0,
+            location: post.location || 'Việt Nam',
+            category: post.category || 'Khác',
+            status: post.status || 'new',
+            url: post.url,
+            image: post.image
+          };
+        });
         setPosts(formattedPosts);
-        console.log(`📥 Loaded ${formattedPosts.length} posts from database`);
+        console.log(`✅ Loaded ${formattedPosts.length} posts from database`);
+      } else {
+        console.warn('⚠️ API returned no posts:', data);
       }
     } catch (err) {
-      console.error('Error fetching posts:', err);
+      console.error('❌ Error fetching posts:', err);
+      // Thử fallback: load từ localStorage nếu có
+      try {
+        const savedData = localStorage.getItem('scraperData');
+        if (savedData) {
+          const parsed = JSON.parse(savedData);
+          if (parsed.items && parsed.items.length > 0) {
+            console.log('📦 Loading from localStorage fallback');
+            // Convert scraper format to posts format
+            const formattedPosts = parsed.items.map((item: any, index: number) => ({
+              id: `local_${Date.now()}_${index}`,
+              content: item.title || item.fullText?.substring(0, 50) + '...',
+              fullContent: item.fullText || item.title,
+              type: item.type === 'marketplace' ? 'Selling' : 'Buying',
+              platform: 'Facebook',
+              confidence: (Math.random() * 20 + 80).toFixed(1) + '%',
+              time: new Date().toLocaleTimeString(),
+              date: new Date().toLocaleDateString(),
+              author: item.author || 'Unknown',
+              price: item.price ? parseInt(item.price.replace(/[^\d]/g, '')) || 0 : 0,
+              location: item.location || 'Việt Nam',
+              category: item.keyword || 'Khác',
+              status: 'new',
+              url: item.url,
+              image: item.image
+            }));
+            setPosts(formattedPosts);
+            console.log(`✅ Loaded ${formattedPosts.length} posts from localStorage`);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading from localStorage:', e);
+      }
     }
   }, []);
 
@@ -126,40 +171,76 @@ export default function App() {
       setSocketConnected(true);
       // Subscribe để nhận cập nhật posts
       socket.emit('posts:subscribe');
+      console.log('📡 Subscribed to posts updates');
     });
 
-    socket.on('disconnect', () => {
-      console.log('🔌 Socket disconnected');
+    socket.on('connect_error', (error) => {
+      console.error('❌ Socket connection error:', error);
+      setSocketConnected(false);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('🔌 Socket disconnected:', reason);
       setSocketConnected(false);
     });
 
     // 🔥 REAL-TIME: Nhận bài viết mới từ server
     socket.on('posts:new', (data: { count: number; posts: any[] }) => {
-      console.log(`📡 Real-time: Received ${data.count} new posts`);
+      console.log(`📡 Real-time: Received ${data.count} new posts`, data);
+      
+      if (!data.posts || data.posts.length === 0) {
+        console.warn('⚠️ No posts in socket event');
+        return;
+      }
       
       // Chuyển đổi và thêm vào state
-      const newPosts = data.posts.map((post: any) => ({
-        id: post._id,
-        content: post.title,
-        fullContent: post.fullContent,
-        type: post.type,
-        platform: post.platform,
-        confidence: post.confidence + '%',
-        time: new Date(post.createdAt).toLocaleTimeString(),
-        date: new Date(post.createdAt).toLocaleDateString(),
-        author: post.author,
-        price: post.price,
-        location: post.location,
-        category: post.category,
-        status: post.status,
-        url: post.url,
-        image: post.image
-      }));
+      const newPosts = data.posts.map((post: any) => {
+        const createdAt = post.createdAt ? new Date(post.createdAt) : new Date();
+        return {
+          id: post._id || post.id,
+          content: post.title || post.content || '',
+          fullContent: post.fullContent || post.title || post.content || '',
+          type: post.type || 'Unknown',
+          platform: post.platform || 'Facebook',
+          confidence: typeof post.confidence === 'number' ? post.confidence + '%' : post.confidence || '85%',
+          time: createdAt.toLocaleTimeString('vi-VN'),
+          date: createdAt.toLocaleDateString('vi-VN'),
+          author: post.author || 'Unknown',
+          price: post.price || 0,
+          location: post.location || 'Việt Nam',
+          category: post.category || 'Khác',
+          status: post.status || 'new',
+          url: post.url,
+          image: post.image
+        };
+      });
 
-      setPosts(prev => [...newPosts, ...prev]);
-      
-      // Hiển thị notification (có thể thêm toast notification ở đây)
-      console.log(`✅ Added ${newPosts.length} new posts to UI`);
+      setPosts(prev => {
+        // Kiểm tra trùng lặp trước khi thêm
+        const existingIds = new Set(prev.map(p => p.id));
+        const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p.id));
+        
+        if (uniqueNewPosts.length === 0) {
+          console.log('⚠️ All new posts are duplicates');
+          return prev;
+        }
+        
+        console.log(`✅ Adding ${uniqueNewPosts.length} unique new posts to UI`);
+        
+        // Tự động chuyển đến trang posts (dùng setCurrentPage trực tiếp)
+        setCurrentPage(prevPage => {
+          if (prevPage !== 'posts') {
+            console.log('📄 Auto-navigating to posts page');
+            return 'posts';
+          }
+          return prevPage;
+        });
+        
+        // Hiển thị notification
+        console.log(`🎉 Có ${uniqueNewPosts.length} bài viết mới từ scraper!`);
+        
+        return [...uniqueNewPosts, ...prev];
+      });
     });
 
     // Nhận cập nhật bài viết
@@ -186,12 +267,32 @@ export default function App() {
     };
   }, []);
 
-  // Fetch posts khi đăng nhập thành công
+  // Fetch posts khi đăng nhập thành công hoặc khi component mount
   useEffect(() => {
     if (isLoggedIn) {
+      console.log('🔐 User logged in, fetching posts...');
       fetchPosts();
     }
   }, [isLoggedIn, fetchPosts]);
+
+  // Fetch posts ngay khi mount nếu đã đăng nhập
+  useEffect(() => {
+    const checkAndFetch = async () => {
+      try {
+        const raw = localStorage.getItem('aifilter.session');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.isLoggedIn) {
+            console.log('📥 Auto-fetching posts on mount...');
+            await fetchPosts();
+          }
+        }
+      } catch (e) {
+        console.error('Error in auto-fetch:', e);
+      }
+    };
+    checkAndFetch();
+  }, [fetchPosts]);
 
   // Hàm tạo hash từ nội dung để kiểm tra trùng lặp
   const createContentHash = (content: string): string => {
@@ -395,7 +496,7 @@ export default function App() {
       case 'users':
         return <UserManagement />;
       case 'posts':
-        return <PostsManagement posts={posts} socketConnected={socketConnected} />;
+        return <PostsManagement posts={posts} socketConnected={socketConnected} onRefresh={fetchPosts} />;
       case 'products':
         return <ProductsManagement />;
       case 'leads':

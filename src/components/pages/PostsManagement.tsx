@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, Radar } from 'lucide-react';
+import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, Radar, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -32,17 +32,22 @@ const SCRAPER_URL = 'http://localhost:3001';
 interface PostsManagementProps {
   posts: any[];
   socketConnected?: boolean;
+  onRefresh?: () => void;
 }
 
-export function PostsManagement({ posts, socketConnected = false }: PostsManagementProps) {
+export function PostsManagement({ posts, socketConnected = false, onRefresh }: PostsManagementProps) {
   const [filterType, setFilterType] = useState('all');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Tính số bài đăng hôm nay
   const todayPostsCount = useMemo(() => {
-    const today = new Date().toLocaleDateString();
-    return posts.filter(p => p.date === today).length;
+    const today = new Date().toLocaleDateString('vi-VN');
+    const todayPosts = posts.filter(p => {
+      const postDate = p.date || new Date().toLocaleDateString('vi-VN');
+      return postDate === today;
+    });
+    return todayPosts.length;
   }, [posts]);
 
   // Lọc bài viết
@@ -91,13 +96,25 @@ export function PostsManagement({ posts, socketConnected = false }: PostsManagem
             </h1>
             <p className="text-gray-500">Xem và quản lý tất cả bài đăng đã thu thập • Cập nhật tự động khi có dữ liệu mới</p>
           </div>
-          <Button 
-            className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white"
-            onClick={openScraperPage}
-          >
-            <Radar className="w-4 h-4 mr-2" />
-            🕵️ Quét dữ liệu mới
-          </Button>
+          <div className="flex gap-2">
+            {onRefresh && (
+              <Button 
+                variant="outline"
+                onClick={onRefresh}
+                title="Làm mới danh sách"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Làm mới
+              </Button>
+            )}
+            <Button 
+              className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white"
+              onClick={openScraperPage}
+            >
+              <Radar className="w-4 h-4 mr-2" />
+              🕵️ Quét dữ liệu mới
+            </Button>
+          </div>
         </div>
       </header>
 

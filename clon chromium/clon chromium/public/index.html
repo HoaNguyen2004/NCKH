@@ -568,6 +568,8 @@
     toast("⏳ Đang gửi dữ liệu lên server...", 3000);
 
     try {
+      console.log(`📤 Sending ${lastScrapedData.length} items to ${BACKEND_API}/posts`);
+      
       // 1. GỬI DỮ LIỆU LÊN BACKEND API (lưu vào database)
       const response = await fetch(`${BACKEND_API}/posts`, {
         method: 'POST',
@@ -575,17 +577,31 @@
         body: JSON.stringify({ items: lastScrapedData })
       });
 
+      console.log('📥 Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const result = await response.json();
+      console.log('📥 API Response:', result);
 
       if (result.success) {
-        toast(`✅ ${result.message}`, 3000);
-        console.log('API Response:', result);
+        toast(`✅ ${result.message}`, 5000);
+        if (result.added > 0) {
+          console.log(`✅ Successfully added ${result.added} posts to database`);
+        }
+        if (result.duplicates > 0) {
+          console.log(`⚠️ Skipped ${result.duplicates} duplicate posts`);
+        }
       } else {
-        toast(`⚠️ API Error: ${result.message}`, 3000);
+        toast(`⚠️ API Error: ${result.message}`, 5000);
+        console.error('API Error:', result);
       }
     } catch (err) {
-      console.error('API Error:', err);
-      toast("⚠️ Không thể kết nối server, lưu local...", 2000);
+      console.error('❌ API Error:', err);
+      toast(`⚠️ Lỗi: ${err.message || 'Không thể kết nối server'}`, 5000);
     }
 
     // 2. LƯU VÀO LOCALSTORAGE (backup)

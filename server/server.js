@@ -49,9 +49,17 @@ const startServer = async () => {
       }
     });
 
-    // Basic socket handlers: join/leave rooms
+    // ✅ Posts route với Socket.IO để emit events real-time (phải mount trước socket handlers)
+    app.use('/api/posts', require('./routes/posts')(io));
+
+    // Mount messages route with io so it can emit events
+    app.use('/api/messages', require('./routes/messages')(io));
+
+    // Socket handlers - chỉ định nghĩa 1 lần
     io.on('connection', (socket) => {
-      // join a lead room
+      console.log('📱 Client connected:', socket.id);
+      
+      // Generic join/leave rooms
       socket.on('join', (room) => {
         try {
           if (room) socket.join(room);
@@ -68,27 +76,19 @@ const startServer = async () => {
         }
       });
 
-      socket.on('disconnect', () => {});
-    });
-
-    // Mount messages route with io so it can emit events
-    app.use('/api/messages', require('./routes/messages')(io));
-
-    // ✅ Posts route với Socket.IO để emit events real-time
-    app.use('/api/posts', require('./routes/posts')(io));
-
-    // Socket events cho posts
-    io.on('connection', (socket) => {
-      console.log('📱 Client connected:', socket.id);
-      
-      // Client join room để nhận cập nhật posts
+      // Posts subscription
       socket.on('posts:subscribe', () => {
         socket.join('posts');
-        console.log(`📡 Client ${socket.id} subscribed to posts`);
+        console.log(`📡 Client ${socket.id} subscribed to posts room`);
       });
 
       socket.on('posts:unsubscribe', () => {
         socket.leave('posts');
+        console.log(`📡 Client ${socket.id} unsubscribed from posts room`);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log(`📱 Client ${socket.id} disconnected:`, reason);
       });
     });
 
