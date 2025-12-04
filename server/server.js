@@ -38,9 +38,6 @@ const startServer = async () => {
     app.use('/api/leads', require('./routes/leads'));
     app.use('/api/reports', require('./routes/reports'));
 
-    // ✅ Scraper routes (tích hợp từ clon chromium)
-    app.use('/api/scraper', require('./routes/scraper'));
-
     // Create HTTP server and attach Socket.IO for real-time
     const http = require('http');
     const { Server } = require('socket.io');
@@ -52,7 +49,10 @@ const startServer = async () => {
       }
     });
 
-    // ✅ Posts route với Socket.IO để emit events real-time (phải mount trước socket handlers)
+    // ✅ Scraper routes (tích hợp từ clon chromium) - cần io để emit events
+    app.use('/api/scraper', require('./routes/scraper')(io));
+
+    // ✅ Posts route với Socket.IO để emit events real-time
     app.use('/api/posts', require('./routes/posts')(io));
 
     // Mount messages route with io so it can emit events

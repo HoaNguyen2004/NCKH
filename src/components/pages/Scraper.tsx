@@ -108,7 +108,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
     setIsLoading(true);
     setStatus('idle');
-    setMessage('Đang quét dữ liệu...');
+    setMessage('Đang quét dữ liệu và phân tích với AI...');
 
     try {
       const res = await fetch(`${scraperUrl}/scrape-filter`, {
@@ -119,16 +119,27 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       const data = await res.json();
 
       if (data.ok) {
-        setStatus('success');
-        setMessage(`Tìm thấy ${data.matched?.length || 0} bài viết khớp từ khóa!`);
         setResults(data.matched || []);
+        
+        // Hiển thị kết quả đã lưu
+        const savedInfo = data.saved 
+          ? `\n✅ Đã lưu: ${data.saved.posts} bài đăng, ${data.saved.leads} khách hàng tiềm năng` 
+          : '';
+        
+        setStatus('success');
+        setMessage(`Tìm thấy ${data.matched?.length || 0} bài viết!${savedInfo}`);
+        
+        // Tự động chuyển sang trang bài đăng sau 2 giây
+        if (data.saved?.posts > 0 && onNavigateToPosts) {
+          setTimeout(() => onNavigateToPosts(), 2500);
+        }
       } else {
         setStatus('error');
         setMessage(data.error || 'Lỗi khi quét dữ liệu');
       }
     } catch (err) {
       setStatus('error');
-      setMessage('Không thể kết nối đến scraper server');
+      setMessage('Không thể kết nối đến server');
     }
 
     setIsLoading(false);
@@ -143,7 +154,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
     setIsLoading(true);
     setStatus('idle');
-    setMessage('Đang quét feed...');
+    setMessage('Đang quét feed và phân tích với AI...');
 
     try {
       const res = await fetch(`${scraperUrl}/scrape-feed`, {
@@ -154,57 +165,32 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       const data = await res.json();
 
       if (data.ok) {
-        setStatus('success');
-        setMessage(`Tìm thấy ${data.matched?.length || 0} bài viết khớp từ khóa!`);
         setResults(data.matched || []);
+        
+        // Hiển thị kết quả đã lưu
+        const savedInfo = data.saved 
+          ? `\n✅ Đã lưu: ${data.saved.posts} bài đăng, ${data.saved.leads} khách hàng tiềm năng` 
+          : '';
+        
+        setStatus('success');
+        setMessage(`Tìm thấy ${data.matched?.length || 0} bài viết!${savedInfo}`);
+        
+        // Tự động chuyển sang trang bài đăng sau 2 giây
+        if (data.saved?.posts > 0 && onNavigateToPosts) {
+          setTimeout(() => onNavigateToPosts(), 2500);
+        }
       } else {
         setStatus('error');
         setMessage(data.error || 'Lỗi khi quét feed');
       }
     } catch (err) {
       setStatus('error');
-      setMessage('Không thể kết nối đến scraper server');
+      setMessage('Không thể kết nối đến server');
     }
 
     setIsLoading(false);
   };
 
-  const sendToDatabase = async () => {
-    if (results.length === 0) {
-      setStatus('error');
-      setMessage('Chưa có dữ liệu để gửi');
-      return;
-    }
-
-    setIsLoading(true);
-    setMessage('Đang gửi dữ liệu lên server...');
-
-    try {
-      const response = await fetch(`${getApiUrl()}/posts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: results })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setStatus('success');
-        setMessage(`Đã thêm ${data.added} bài viết vào database!`);
-        if (onNavigateToPosts) {
-          setTimeout(() => onNavigateToPosts(), 1500);
-        }
-      } else {
-        setStatus('error');
-        setMessage(data.message || 'Lỗi khi lưu dữ liệu');
-      }
-    } catch (err) {
-      setStatus('error');
-      setMessage('Không thể kết nối đến backend server');
-    }
-
-    setIsLoading(false);
-  };
 
   return (
     <main className="flex-1 overflow-auto">
@@ -366,14 +352,25 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     onChange={(e) => setKeywords(e.target.value)}
                   />
                 </div>
-                <Button 
-                  onClick={handleSearch} 
-                  disabled={isLoading || serverStatus === 'offline'}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
-                  Bắt đầu quét
-                </Button>
+                <div className="pt-2">
+                  <Button 
+                    onClick={handleSearch} 
+                    disabled={isLoading || serverStatus === 'offline'}
+                    className="w-full h-12 text-lg bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Đang quét Search...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-5 h-5 mr-2" />
+                        🔍 Quét Search
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -439,14 +436,25 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     <span>30 (Nhiều)</span>
                   </div>
                 </div>
-                <Button 
-                  onClick={handleScrapeFeed} 
-                  disabled={isLoading || serverStatus === 'offline'}
-                  className="w-full bg-orange-600 hover:bg-orange-700"
-                >
-                  {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
-                  Bắt đầu cào Feed
-                </Button>
+                <div className="pt-2">
+                  <Button 
+                    onClick={handleScrapeFeed} 
+                    disabled={isLoading || serverStatus === 'offline'}
+                    className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Đang quét Feed...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-5 h-5 mr-2" />
+                        🚀 Quét Feed
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -458,12 +466,16 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <span className="text-xl">📊</span>
-                    Kết quả: {results.length} bài viết
+                    Kết quả: {results.length} bài viết (đã tự động lưu)
                   </CardTitle>
-                  <Button onClick={sendToDatabase} disabled={isLoading}>
-                    {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    Gửi về Bài đăng
-                  </Button>
+                  <div className="flex gap-2">
+                    <Badge className="bg-green-100 text-green-700">
+                      {results.filter(r => r.type === 'Buying').length} Mua
+                    </Badge>
+                    <Badge className="bg-orange-100 text-orange-700">
+                      {results.filter(r => r.type === 'Selling').length} Bán
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -481,8 +493,20 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="secondary">{item.type || 'group'}</Badge>
-                            <Badge variant="outline">{item.keyword}</Badge>
+                            <Badge 
+                              className={item.type === 'Buying' 
+                                ? 'bg-green-100 text-green-700' 
+                                : item.type === 'Selling' 
+                                ? 'bg-orange-100 text-orange-700' 
+                                : 'bg-gray-100 text-gray-700'
+                              }
+                            >
+                              {item.type === 'Buying' ? '🛒 Mua' : item.type === 'Selling' ? '💰 Bán' : '❓ Khác'}
+                            </Badge>
+                            <Badge variant="outline">{item.category || item.keyword}</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {item.confidence || 50}% tin cậy
+                            </Badge>
                           </div>
                           <h4 className="font-medium text-gray-900 truncate">
                             {item.title || item.fullText?.substring(0, 60) + '...'}
@@ -490,9 +514,19 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                           <p className="text-sm text-gray-500 line-clamp-2">
                             {item.fullText?.substring(0, 150)}...
                           </p>
-                          {item.price && (
-                            <p className="text-red-600 font-semibold mt-1">{item.price}</p>
-                          )}
+                          <div className="flex items-center gap-4 mt-2">
+                            {(item.estimatedPrice || item.price) && (
+                              <span className="text-red-600 font-semibold">
+                                {item.estimatedPrice 
+                                  ? `~${item.estimatedPrice.toLocaleString()}đ` 
+                                  : item.price
+                                }
+                              </span>
+                            )}
+                            {item.author && (
+                              <span className="text-xs text-gray-400">👤 {item.author}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
