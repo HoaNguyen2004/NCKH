@@ -17,7 +17,6 @@ import { Reports } from './components/pages/Reports';
 import { ContentFilter } from './components/pages/ContentFilter';
 import { AISettings } from './components/pages/AISettings';
 import { DataSources } from './components/pages/DataSources';
-import { Research } from './components/pages/Research';
 import { History } from './components/pages/History';
 
 // Backend API URL
@@ -511,8 +510,6 @@ export default function App() {
         return <AISettings />;
       case 'sources':
         return <DataSources />;
-      case 'research':
-        return <Research />;
       case 'history':
         return <History posts={posts} />;
       default:

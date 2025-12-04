@@ -17,6 +17,24 @@ interface LoginProps {
   onShowRegister?: () => void;
 }
 
+// Logo SVG component
+const LogoIcon = ({ className = "w-16 h-16" }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className}>
+    <circle cx="50" cy="50" r="48" fill="currentColor" className="text-gray-900"/>
+    <g stroke="white" strokeWidth="2" fill="none">
+      {/* Planet circle */}
+      <ellipse cx="50" cy="50" rx="30" ry="30"/>
+      {/* Orbit ring */}
+      <ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(-20 50 50)"/>
+      {/* Compass needle */}
+      <path d="M50 25 L55 50 L50 75 L45 50 Z" fill="white" stroke="none"/>
+      <circle cx="50" cy="50" r="5"/>
+      {/* Star */}
+      <path d="M75 22 L77 28 L83 28 L78 32 L80 38 L75 34 L70 38 L72 32 L67 28 L73 28 Z" fill="white" stroke="none"/>
+    </g>
+  </svg>
+);
+
 export function Login({ onLogin, onShowRegister }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,9 +53,9 @@ export function Login({ onLogin, onShowRegister }: LoginProps) {
 
   const handleDemoLogin = (role: string) => {
     const demoAccounts: Record<string, { email: string; password: string }> = {
-      admin: { email: 'admin@aifilter.com', password: 'admin123' },
-      manager: { email: 'manager@aifilter.com', password: 'manager123' },
-      sales: { email: 'sales@aifilter.com', password: 'sales123' },
+      admin: { email: 'admin@demo.com', password: 'admin123' },
+      manager: { email: 'manager@demo.com', password: 'manager123' },
+      sales: { email: 'sales@demo.com', password: 'sales123' },
     };
     
     const account = demoAccounts[role];
@@ -53,14 +71,8 @@ export function Login({ onLogin, onShowRegister }: LoginProps) {
       <div className="w-full max-w-6xl grid grid-cols-2 gap-8 items-center">
         {/* Left Side - Branding */}
         <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <LogIn className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-gray-900 text-3xl">AI Filter</h1>
-              <p className="text-gray-600">Social Media Analyzer</p>
-            </div>
+          <div className="flex items-center gap-4">
+            <LogoIcon className="w-20 h-20" />
           </div>
 
           <div className="space-y-4">

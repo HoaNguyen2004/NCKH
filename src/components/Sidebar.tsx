@@ -1,6 +1,6 @@
 import { 
   Home, Users, FileText, ShoppingCart, UserCheck, MessageSquare, 
-  BarChart3, Filter, Brain, Link, GraduationCap, History, Activity, LogOut 
+  BarChart3, Brain, Link, LogOut 
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -29,7 +29,6 @@ export function Sidebar({ currentPage, onPageChange, onLogout, userRole = 'admin
       { id: 'reports', icon: BarChart3, label: t('sidebar.reports'), roles: ['admin', 'manager'] },
       { id: 'ai-settings', icon: Brain, label: t('sidebar.aiSettings'), roles: ['admin'] },
       { id: 'sources', icon: Link, label: t('sidebar.sources'), roles: ['admin'] },
-      { id: 'research', icon: GraduationCap, label: t('sidebar.research'), roles: ['admin'] },
     ];
 
     return allItems.filter(item => item.roles.includes(userRole));
@@ -48,20 +47,33 @@ export function Sidebar({ currentPage, onPageChange, onLogout, userRole = 'admin
 
   const roleBadge = getRoleBadge();
 
+  // Logo SVG component
+  const LogoIcon = () => (
+    <svg viewBox="0 0 100 100" className="w-10 h-10">
+      <circle cx="50" cy="50" r="48" fill="currentColor" className="text-gray-900"/>
+      <g stroke="white" strokeWidth="2" fill="none">
+        {/* Planet circle */}
+        <ellipse cx="50" cy="50" rx="30" ry="30"/>
+        {/* Orbit ring */}
+        <ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(-20 50 50)"/>
+        {/* Compass needle */}
+        <path d="M50 25 L55 50 L50 75 L45 50 Z" fill="white" stroke="none"/>
+        <circle cx="50" cy="50" r="5"/>
+        {/* Star */}
+        <path d="M75 22 L77 28 L83 28 L78 32 L80 38 L75 34 L70 38 L72 32 L67 28 L73 28 Z" fill="white" stroke="none"/>
+      </g>
+    </svg>
+  );
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 ${roleBadge.color} rounded-lg flex items-center justify-center`}>
-            <Filter className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="text-gray-900">AI Filter</div>
-            <Badge className={`${roleBadge.color} text-white text-xs`}>
-              {roleBadge.label}
-            </Badge>
-          </div>
+          <LogoIcon />
+          <Badge className={`${roleBadge.color} text-white text-sm px-3 py-1`}>
+            {roleBadge.label}
+          </Badge>
         </div>
       </div>
 
