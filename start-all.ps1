@@ -43,3 +43,4 @@ Write-Host ""
 Write-Host "✅ Hoàn tất! Các cửa sổ PowerShell đã mở." -ForegroundColor Green
 Write-Host "   Đóng các cửa sổ này sẽ dừng services tương ứng." -ForegroundColor Yellow
 
+
