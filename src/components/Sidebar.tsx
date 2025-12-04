@@ -1,6 +1,6 @@
 import { 
   Home, Users, FileText, ShoppingCart, UserCheck, MessageSquare, 
-  BarChart3, Brain, Link, LogOut 
+  BarChart3, Brain, Link, LogOut, Search 
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -23,6 +23,7 @@ export function Sidebar({ currentPage, onPageChange, onLogout, userRole = 'admin
       { id: 'dashboard', icon: Home, label: t('sidebar.dashboard'), roles: ['admin', 'manager', 'sales'] },
       { id: 'users', icon: Users, label: t('sidebar.users'), roles: ['admin'] },
       { id: 'posts', icon: FileText, label: t('sidebar.posts'), roles: ['admin', 'manager', 'sales'] },
+      { id: 'scraper', icon: Search, label: t('sidebar.scraper'), roles: ['admin', 'manager', 'sales'] },
       { id: 'products', icon: ShoppingCart, label: t('sidebar.products'), roles: ['admin', 'manager'] },
       { id: 'leads', icon: UserCheck, label: t('sidebar.leads'), roles: ['admin', 'manager', 'sales'] },
       { id: 'conversations', icon: MessageSquare, label: t('sidebar.conversations'), roles: ['admin', 'manager', 'sales'] },
