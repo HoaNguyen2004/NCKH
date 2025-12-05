@@ -112,7 +112,10 @@ async function seedDemoUsers() {
 // ✅ Kết nối MongoDB
 const startServer = async () => {
   try {
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/identity_db';
+    // Ưu tiên lấy từ biến môi trường, nếu không có sẽ dùng cụm MongoDB Atlas identity_db bạn cung cấp
+    const uri =
+      process.env.MONGODB_URI ||
+      'mongodb+srv://quyet:dKsuuAc3ODjC1wVc@cluster0.9mytcrv.mongodb.net/identity_db';
     await mongoose.connect(uri);
     console.log('✅ Connected to MongoDB:', uri);
 

@@ -12,7 +12,7 @@ npm install
 Tạo file `server/.env`:
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/aifilter
+MONGODB_URI=mongodb+srv://quyet:dKsuuAc3ODjC1wVc@cluster0.9mytcrv.mongodb.net/identity_db
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 PORT=5000
 ```

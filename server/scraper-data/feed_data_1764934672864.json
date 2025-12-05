@@ -1,0 +1,65 @@
+{
+  "keywords": [
+    "box"
+  ],
+  "feedUrl": "https://www.facebook.com",
+  "total": 6,
+  "analyzed": 6,
+  "saved": {
+    "postsAdded": 2,
+    "leadsAdded": 0,
+    "duplicates": 4,
+    "errors": 0,
+    "newPosts": [
+      {
+        "title": "🎉 [BOX LIÊN QUÂN] – CHÍNH THỨC MỞ CỬA CHÀO ĐÓN THÀNH VIÊN MỚI! 🎮🔥\n🌟 Đối tượn...",
+        "fullContent": "🎉 [BOX LIÊN QUÂN] – CHÍNH THỨC MỞ CỬA CHÀO ĐÓN THÀNH VIÊN MỚI! 🎮🔥\n🌟 Đối tượng: Từ 2K đến K9\n\n🌟 Nam nữ đều welcome – càng đông càng vui 😎\n\n🌊 Ưu tiên đặc biệt: Những “con của biển” – nhiệt huyết, máu lửa, chơi hết mình!\n\n⸻\n\n💬 QUY ĐỊNH THAM GIA\n\n🚫 Tôn trọng QTV & toàn bộ thành viên – gây war = kick ngay\n\n🐠 Box không tuyển cá cảnh → ưu tiên người hoạt động, giao lưu, chơi game thường xuyên\n\n👤 Không nhận tài khoản Facebook quá ảo (avatar trống, ít tương tác, bạn bè quá ít)\n\n🛡️ Chơi game văn minh, nói chuyện lịch sự, không toxic\n\n⸻\n\n⚔️ KHI BOX ỔN ĐỊNH SẼ CÓ:\n\n🔥 Giao lưu – luyện rank – custom nội bộ cuối tuần\n\n🔥 Học hỏi kỹ năng, nâng trình, ghép team cố định\n\n🔥 Môi trường vui vẻ, thoải mái, không drama\n\n⸻\n\n❤️ THAM GIA ĐỂ:\n\n⚡ Tìm đồng đội leo rank lâu dài\n\n⚡ Giao lưu – kết bạn – chơi game vui không áp lực\n\n⚡ Trở thành một phần của gia đình Liên Quân đầy năng lượng!",
+        "type": "Unknown",
+        "category": "Khác",
+        "platform": "Facebook",
+        "sourceType": "group_post",
+        "url": "https://www.facebook.com/groups/353059349785663/posts/1417093440048910/",
+        "image": "https://scontent.fdad7-2.fna.fbcdn.net/v/t39.30808-6/594060023_1404182907973446_3922187196205524295_n.jpg?stp=dst-jpg_s590x590_tt6&_nc_cat=103&ccb=1-7&_nc_sid=aa7b47&_nc_ohc=GIGgJVFhVXEQ7kNvwGUT7O4&_nc_oc=Adnbqi5vQBbrTys3_UJoTxlGxHq9AF5tVorbttShaBg5ia1434wE4ifwbgn52BdcUl4&_nc_zt=23&_nc_ht=scontent.fdad7-2.fna&_nc_gid=jIyqRoHhFX2aFrfJqRo4bQ&oh=00_AfmPWuPQCPVHRLLBbJe2g10zcrw1NkFxTahW9rBHi3fNtQ&oe=69389307",
+        "price": 2000,
+        "priceText": "2K",
+        "author": "Hoàng Lê",
+        "authorId": "100051452504045",
+        "location": "Newsfeed",
+        "keyword": "box",
+        "confidence": 30,
+        "status": "new",
+        "contentHash": "🎉 [box liên quân] – chính thức mở cửa chào đón thành viên mới! 🎮🔥 🌟 đối tượng: từ 2k đến k9 🌟 n",
+        "_id": "6932c4102a23daa115d44fcd",
+        "scrapedAt": "2025-12-05T11:37:52.841Z",
+        "createdAt": "2025-12-05T11:37:52.846Z",
+        "updatedAt": "2025-12-05T11:37:52.846Z",
+        "__v": 0
+      },
+      {
+        "title": "Ttv cho cái box chán ngắt này\nYc: trên 08",
+        "fullContent": "Ttv cho cái box chán ngắt này\nYc: trên 08",
+        "type": "Unknown",
+        "category": "Khác",
+        "platform": "Facebook",
+        "sourceType": "group_post",
+        "url": "https://www.facebook.com/groups/393413807954387/posts/1752734915355596/",
+        "image": "https://scontent.fdad7-2.fna.fbcdn.net/v/t39.30808-6/592369727_122144794178817955_7103431442985825373_n.jpg?stp=dst-jpg_s590x590_tt6&_nc_cat=108&ccb=1-7&_nc_sid=aa7b47&_nc_ohc=rsnqkJdFVTEQ7kNvwGY0TAr&_nc_oc=AdnDsyYPEcHGjrxmuhFZYRJXi6lMN_rPsQlKlmbXGL9bEIW6kbkTFs9lmoFBiVrBO44&_nc_zt=23&_nc_ht=scontent.fdad7-2.fna&_nc_gid=2BFA7Vxk2E_l82ARqE39eA&oh=00_AfkrfCu0Hmagt-PLn3BudH9S-lRSp2dn6jzw6GjiMDW7-g&oe=6938AD1B",
+        "price": 0,
+        "priceText": "",
+        "author": "Ngan Thuy",
+        "authorId": "61574538669555",
+        "location": "Newsfeed",
+        "keyword": "box",
+        "confidence": 30,
+        "status": "new",
+        "contentHash": "ttv cho cái box chán ngắt này yc: trên 08",
+        "_id": "6932c4102a23daa115d44fcf",
+        "scrapedAt": "2025-12-05T11:37:52.860Z",
+        "createdAt": "2025-12-05T11:37:52.861Z",
+        "updatedAt": "2025-12-05T11:37:52.861Z",
+        "__v": 0
+      }
+    ],
+    "newLeads": []
+  }
+}
