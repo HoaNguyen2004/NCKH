@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
+import { getToken } from '../../utils/api';
 import { UserPlus, Search, MoreVertical, Mail, Phone, Shield } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -100,12 +103,14 @@ export function UserManagement() {
   const [showDialog, setShowDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phone: '',
     role: 'Sales Staff',
-    password: 'password123'
+    password: 'password123',
+    permissions: [] as string[]
   });
 
   useEffect(() => {
@@ -114,18 +119,22 @@ export function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users');
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`${API_BASE_URL}/users`, { headers });
       const data = await response.json();
       if (data.success && data.users) {
         const formattedUsers = data.users.map((u: any, idx: number) => ({
           id: u._id || u.id,
           _id: u._id,
-          name: u.fullName,
-          email: u.email,
+          name: u.fullName || u.name || 'Không có tên',
+          email: u.email || '',
           phone: u.phone || '',
           role: u.role || 'user',
+          permissions: u.permissions || [],
           status: 'active',
-          lastActive: new Date(u.updatedAt).toLocaleString('vi-VN'),
+          lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Chưa có',
           postsAnalyzed: idx * 100 + 50
         }));
         setUsers(formattedUsers);
@@ -142,16 +151,19 @@ export function UserManagement() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/users', {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`${API_BASE_URL}/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(formData)
       });
 
       const data = await response.json();
       if (data.success) {
         alert('Thêm người dùng thành công');
-        setFormData({ fullName: '', email: '', phone: '', role: 'Sales Staff', password: 'password123' });
+        setFormData({ fullName: '', email: '', phone: '', role: 'Sales Staff', password: 'password123', permissions: [] });
         setShowDialog(false);
         fetchUsers();
       } else {
@@ -170,7 +182,8 @@ export function UserManagement() {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      password: 'password123'
+      password: 'password123',
+      permissions: user.permissions || []
     });
     setShowEditDialog(true);
   };
@@ -182,13 +195,17 @@ export function UserManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${editingUserId}`, {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`${API_BASE_URL}/users/${editingUserId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           fullName: formData.fullName,
           phone: formData.phone,
-          role: formData.role
+          role: formData.role,
+          permissions: formData.permissions || []
         })
       });
 
@@ -211,8 +228,12 @@ export function UserManagement() {
     if (!confirm('Bạn chắc chắn muốn xóa người dùng này?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${user._id || user.id}`, {
-        method: 'DELETE'
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`${API_BASE_URL}/users/${user._id || user.id}`, {
+        method: 'DELETE',
+        headers
       });
 
       const data = await response.json();
@@ -243,9 +264,24 @@ export function UserManagement() {
     }
   };
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  const getInitials = (name: string | undefined) => {
+    if (!name || typeof name !== 'string') return '??';
+    const parts = name.trim().split(' ').filter(n => n.length > 0);
+    if (parts.length === 0) return '??';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
+
+  const filteredUsers = users.filter(user => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.phone.includes(query) ||
+      user.role.toLowerCase().includes(query)
+    );
+  });
 
   const { t } = useLanguage();
 
@@ -489,7 +525,12 @@ export function UserManagement() {
               <CardTitle>{t('users.title')}</CardTitle>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input placeholder={t('common.search') + '...'} className="pl-10 w-64" />
+                <Input 
+                  placeholder={t('common.search') + '...'} 
+                  className="pl-10 w-64" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
             </div>
           </CardHeader>
@@ -507,14 +548,14 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                         </Avatar>
-                        <div className="text-gray-900">{user.name}</div>
+                        <div className="text-gray-900">{user.name || 'Không có tên'}</div>
                       </div>
                     </TableCell>
                     <TableCell>

@@ -62,9 +62,9 @@ cd "D:\nghiencuukhoahoc\NCKH(1)\NCKH\server"
 npm run dev
 ```
 
-**Kết quả mong đợi:**
+**Kết quả mong đợi (dùng MongoDB Atlas - identity_db):**
 ```
-✅ Connected to MongoDB: mongodb://localhost:27017/identity_db
+✅ Connected to MongoDB: mongodb+srv://quyet:dKsuuAc3ODjC1wVc@cluster0.9mytcrv.mongodb.net/identity_db
 🚀 Server + Socket.IO running on http://localhost:5000
 ```
 
@@ -258,4 +258,5 @@ Nếu vẫn gặp lỗi, kiểm tra:
 4. ✅ Đã cài đặt đầy đủ dependencies
 
 Xem logs trong console để biết lỗi cụ thể!
+
 

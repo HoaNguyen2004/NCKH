@@ -14,16 +14,9 @@ npm install
 ```
 
 2. **Cấu hình MongoDB:**
-   - Tạo file `.env` trong thư mục `server`:
+   - Tạo file `.env` trong thư mục `server` (dùng luôn MongoDB Atlas `identity_db` như trong dự án):
    ```env
-   MONGODB_URI=mongodb://localhost:27017/aifilter
-   JWT_SECRET=your-super-secret-jwt-key-change-in-production
-   PORT=5000
-   ```
-   
-   - Hoặc sử dụng MongoDB Atlas (Cloud):
-   ```env
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/aifilter?retryWrites=true&w=majority
+   MONGODB_URI=mongodb+srv://quyet:dKsuuAc3ODjC1wVc@cluster0.9mytcrv.mongodb.net/identity_db
    JWT_SECRET=your-super-secret-jwt-key-change-in-production
    PORT=5000
    ```
