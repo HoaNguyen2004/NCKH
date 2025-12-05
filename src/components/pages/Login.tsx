@@ -15,8 +15,6 @@ import {
 interface LoginProps {
   onLogin: (email: string, password: string, remember?: boolean) => void;
   onShowRegister?: () => void;
-  error?: string;
-  loading?: boolean;
 }
 
 // Logo SVG component
@@ -37,7 +35,7 @@ const LogoIcon = ({ className = "w-16 h-16" }: { className?: string }) => (
   </svg>
 );
 
-export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
+export function Login({ onLogin, onShowRegister }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -141,7 +139,6 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
                     required
-                    disabled={!!loading}
                   />
                 </div>
               </div>
@@ -158,7 +155,6 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
                     required
-                    disabled={!!loading}
                   />
                   <button
                     type="button"
@@ -180,7 +176,6 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                     id="remember"
                     checked={rememberMe}
                     onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                    disabled={!!loading}
                   />
                   <Label htmlFor="remember" className="cursor-pointer text-sm">
                     Ghi nhớ đăng nhập
@@ -195,15 +190,9 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                 </button>
               </div>
 
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" className="w-full" disabled={!!loading}>
+              <Button type="submit" className="w-full">
                 <LogIn className="w-4 h-4 mr-2" />
-                {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                Đăng nhập
               </Button>
             </form>
 

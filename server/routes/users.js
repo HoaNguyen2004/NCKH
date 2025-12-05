@@ -1,14 +1,8 @@
 /* server/routes/users.js */
 const express = require('express');
 const User = require('../models/User');
-const Role = require('../models/Role');
-const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
-
-// Áp dụng cho toàn bộ routes dưới đây: yêu cầu đăng nhập + phải là admin
-router.use(requireAuth);
-router.use(requireRole(['admin']));
 
 // GET /api/users - Lấy tất cả người dùng
 router.get('/', async (req, res) => {
@@ -47,19 +41,15 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ success: false, message: 'Email đã tồn tại' });
     }
 
-    const roleKey = role || 'user';
-    const roleDoc = await Role.findOne({ key: roleKey });
-
     const user = await User.create({
       fullName,
       email,
       phone,
       company,
       location,
-      role: roleKey,
-      roleRef: roleDoc ? roleDoc._id : undefined,
+      role: role || 'user',
       password,
-      permissions: permissions || (roleDoc ? roleDoc.permissions : [])
+      permissions: permissions || []
     });
 
     return res.status(201).json({

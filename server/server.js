@@ -4,8 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
-const Role = require('./models/Role');
-const User = require('./models/User');
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
@@ -24,101 +22,12 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ✅ Test health
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-// Seed một số role mặc định nếu chưa có
-async function seedDefaultRoles() {
-  const defaultRoles = [
-    {
-      key: 'admin',
-      name: 'Administrator',
-      description: 'Toàn quyền quản trị hệ thống',
-      permissions: ['users.read', 'users.write', 'reports.read', 'settings.write']
-    },
-    {
-      key: 'manager',
-      name: 'Manager',
-      description: 'Quản lý kinh doanh và đội nhóm',
-      permissions: ['users.read', 'reports.read', 'leads.read', 'leads.write']
-    },
-    {
-      key: 'sales',
-      name: 'Sales',
-      description: 'Nhân viên kinh doanh',
-      permissions: ['leads.read', 'leads.write']
-    },
-    {
-      key: 'user',
-      name: 'User',
-      description: 'Người dùng thông thường',
-      permissions: []
-    }
-  ];
-
-  for (const r of defaultRoles) {
-    await Role.updateOne(
-      { key: r.key },
-      { $setOnInsert: r },
-      { upsert: true }
-    );
-  }
-
-  console.log('✅ Default roles ensured in MongoDB');
-}
-
-// Seed các tài khoản demo (admin, manager, sales) để dùng cho đăng nhập demo
-async function seedDemoUsers() {
-  const demoUsers = [
-    {
-      fullName: 'Demo Admin',
-      email: 'admin@demo.com',
-      password: 'admin123',
-      roleKey: 'admin'
-    },
-    {
-      fullName: 'Demo Manager',
-      email: 'manager@demo.com',
-      password: 'manager123',
-      roleKey: 'manager'
-    },
-    {
-      fullName: 'Demo Sales',
-      email: 'sales@demo.com',
-      password: 'sales123',
-      roleKey: 'sales'
-    }
-  ];
-
-  for (const demo of demoUsers) {
-    const existed = await User.findOne({ email: demo.email });
-    if (existed) continue;
-
-    const roleDoc = await Role.findOne({ key: demo.roleKey });
-
-    await User.create({
-      fullName: demo.fullName,
-      email: demo.email,
-      phone: '',
-      company: '',
-      location: '',
-      role: demo.roleKey,
-      roleRef: roleDoc ? roleDoc._id : undefined,
-      permissions: roleDoc ? roleDoc.permissions : [],
-      password: demo.password
-    });
-  }
-
-  console.log('✅ Demo users ensured in MongoDB');
-}
-
 // ✅ Kết nối MongoDB
 const startServer = async () => {
   try {
     const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/identity_db';
     await mongoose.connect(uri);
     console.log('✅ Connected to MongoDB:', uri);
-
-    // Đảm bảo có các role mặc định và tài khoản demo
-    await seedDefaultRoles();
-    await seedDemoUsers();
 
     // ✅ Auth routes
     app.use('/api/auth', require('./routes/auth'));
@@ -128,6 +37,9 @@ const startServer = async () => {
     app.use('/api/products', require('./routes/products'));
     app.use('/api/leads', require('./routes/leads'));
     app.use('/api/reports', require('./routes/reports'));
+
+    // ✅ Scraper routes (tích hợp từ clon chromium)
+    app.use('/api/scraper', require('./routes/scraper'));
 
     // Create HTTP server and attach Socket.IO for real-time
     const http = require('http');
@@ -140,10 +52,7 @@ const startServer = async () => {
       }
     });
 
-    // ✅ Scraper routes (tích hợp từ clon chromium) - cần io để emit events
-    app.use('/api/scraper', require('./routes/scraper')(io));
-
-    // ✅ Posts route với Socket.IO để emit events real-time
+    // ✅ Posts route với Socket.IO để emit events real-time (phải mount trước socket handlers)
     app.use('/api/posts', require('./routes/posts')(io));
 
     // Mount messages route with io so it can emit events
