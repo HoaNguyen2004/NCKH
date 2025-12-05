@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { UserPlus, Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Building2 } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { UserPlus, Mail, Lock, User, Phone, MapPin, Eye, EyeOff, Building2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -37,6 +37,9 @@ const LogoIcon = ({ className = "w-16 h-16" }: { className?: string }) => (
   </svg>
 );
 
+// API URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 interface RegisterProps {
   onRegister: (userData: any) => void;
   onShowLogin: () => void;
@@ -57,12 +60,83 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // States cho kiểm tra email/phone realtime
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [emailCheckTimeout, setEmailCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [phoneCheckTimeout, setPhoneCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Hàm kiểm tra email đã tồn tại chưa
+  const checkEmailExists = useCallback(async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailStatus('idle');
+      return;
+    }
+    
+    setEmailStatus('checking');
+    try {
+      const res = await fetch(`${API_URL}/auth/check-email?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setEmailStatus(data.exists ? 'taken' : 'available');
+        if (data.exists) {
+          setErrors(prev => ({ ...prev, email: 'Email này đã được đăng ký' }));
+        }
+      }
+    } catch (err) {
+      console.error('Check email error:', err);
+      setEmailStatus('idle');
+    }
+  }, []);
+
+  // Hàm kiểm tra số điện thoại đã tồn tại chưa
+  const checkPhoneExists = useCallback(async (phone: string) => {
+    const normalizedPhone = phone.replace(/[\s\-\.]/g, '');
+    if (!normalizedPhone || normalizedPhone.length < 10) {
+      setPhoneStatus('idle');
+      return;
+    }
+    
+    setPhoneStatus('checking');
+    try {
+      const res = await fetch(`${API_URL}/auth/check-phone?phone=${encodeURIComponent(normalizedPhone)}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setPhoneStatus(data.exists ? 'taken' : 'available');
+        if (data.exists) {
+          setErrors(prev => ({ ...prev, phone: 'Số điện thoại này đã được đăng ký' }));
+        }
+      }
+    } catch (err) {
+      console.error('Check phone error:', err);
+      setPhoneStatus('idle');
+    }
+  }, []);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    
+    // Debounce check email
+    if (field === 'email') {
+      setEmailStatus('idle');
+      if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+      const timeout = setTimeout(() => checkEmailExists(value), 500);
+      setEmailCheckTimeout(timeout);
+    }
+    
+    // Debounce check phone
+    if (field === 'phone') {
+      setPhoneStatus('idle');
+      if (phoneCheckTimeout) clearTimeout(phoneCheckTimeout);
+      const timeout = setTimeout(() => checkPhoneExists(value), 500);
+      setPhoneCheckTimeout(timeout);
     }
   };
 
@@ -77,12 +151,16 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
       newErrors.email = 'Vui lòng nhập email';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Email không hợp lệ';
+    } else if (emailStatus === 'taken') {
+      newErrors.email = 'Email này đã được đăng ký';
     }
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Vui lòng nhập số điện thoại';
     } else if (!/^[0-9]{10}$/.test(formData.phone.replace(/\s/g, ''))) {
       newErrors.phone = 'Số điện thoại không hợp lệ';
+    } else if (phoneStatus === 'taken') {
+      newErrors.phone = 'Số điện thoại này đã được đăng ký';
     }
 
     if (!formData.role) {
@@ -215,11 +293,26 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                       placeholder="0912345678"
                       value={formData.phone}
                       onChange={(e) => handleChange('phone', e.target.value)}
-                      className={`pl-10 ${errors.phone ? 'border-red-500' : ''}`}
+                      className={`pl-10 pr-10 ${errors.phone ? 'border-red-500' : phoneStatus === 'available' ? 'border-green-500' : ''}`}
                     />
+                    {/* Icon trạng thái kiểm tra phone */}
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {phoneStatus === 'checking' && (
+                        <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                      )}
+                      {phoneStatus === 'available' && (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      )}
+                      {phoneStatus === 'taken' && (
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      )}
+                    </div>
                   </div>
                   {errors.phone && (
                     <p className="text-red-500 text-sm">{errors.phone}</p>
+                  )}
+                  {phoneStatus === 'available' && !errors.phone && (
+                    <p className="text-green-500 text-sm">✓ Số điện thoại có thể sử dụng</p>
                   )}
                 </div>
               </div>
@@ -234,11 +327,26 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                     placeholder="your@email.com"
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                    className={`pl-10 pr-10 ${errors.email ? 'border-red-500' : emailStatus === 'available' ? 'border-green-500' : ''}`}
                   />
+                  {/* Icon trạng thái kiểm tra email */}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {emailStatus === 'checking' && (
+                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                    )}
+                    {emailStatus === 'available' && (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    )}
+                    {emailStatus === 'taken' && (
+                      <XCircle className="w-4 h-4 text-red-500" />
+                    )}
+                  </div>
                 </div>
                 {errors.email && (
                   <p className="text-red-500 text-sm">{errors.email}</p>
+                )}
+                {emailStatus === 'available' && !errors.email && (
+                  <p className="text-green-500 text-sm">✓ Email có thể sử dụng</p>
                 )}
               </div>
 

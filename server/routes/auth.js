@@ -31,6 +31,52 @@ function createTransporter() {
   return null;
 }
 
+// GET /api/auth/check-email - Kiểm tra email đã tồn tại chưa (realtime validation)
+router.get('/check-email', async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Thiếu email' });
+    }
+    
+    const existed = await User.findOne({ email: email.toLowerCase().trim() });
+    return res.json({ 
+      success: true, 
+      exists: !!existed,
+      message: existed ? 'Email này đã được đăng ký' : 'Email có thể sử dụng'
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// GET /api/auth/check-phone - Kiểm tra số điện thoại đã tồn tại chưa
+router.get('/check-phone', async (req, res) => {
+  try {
+    const { phone } = req.query;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Thiếu số điện thoại' });
+    }
+    
+    // Chuẩn hóa số điện thoại (bỏ khoảng trắng, dấu gạch ngang)
+    const normalizedPhone = phone.replace(/[\s\-\.]/g, '').trim();
+    if (!normalizedPhone) {
+      return res.json({ success: true, exists: false });
+    }
+    
+    const existed = await User.findOne({ phone: normalizedPhone });
+    return res.json({ 
+      success: true, 
+      exists: !!existed,
+      message: existed ? 'Số điện thoại này đã được đăng ký' : 'Số điện thoại có thể sử dụng'
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
@@ -43,26 +89,43 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
     }
 
-    const existed = await User.findOne({ email });
-    if (existed) {
-      return res.status(409).json({ success: false, message: 'Email đã tồn tại' });
+    // Chuẩn hóa email
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Kiểm tra email đã tồn tại chưa
+    const emailExisted = await User.findOne({ email: normalizedEmail });
+    if (emailExisted) {
+      return res.status(409).json({ success: false, message: 'Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.' });
+    }
+    
+    // Kiểm tra số điện thoại đã tồn tại chưa (nếu có nhập)
+    if (phone) {
+      const normalizedPhone = phone.replace(/[\s\-\.]/g, '').trim();
+      if (normalizedPhone) {
+        const phoneExisted = await User.findOne({ phone: normalizedPhone });
+        if (phoneExisted) {
+          return res.status(409).json({ success: false, message: 'Số điện thoại này đã được đăng ký. Vui lòng sử dụng số khác.' });
+        }
+      }
     }
 
     // Xác định roleKey (admin, manager, sales, user, ...)
     const roleKey = role || 'user';
     const roleDoc = await Role.findOne({ key: roleKey });
 
+    // Chuẩn hóa số điện thoại trước khi lưu
+    const normalizedPhone = phone ? phone.replace(/[\s\-\.]/g, '').trim() : '';
+
     const user = await User.create({
       fullName,
-      email,
-      phone,
+      email: normalizedEmail,
+      phone: normalizedPhone,
       company,
       location,
       role: roleKey,
       roleRef: roleDoc ? roleDoc._id : undefined,
       // Nếu muốn, có thể gán luôn permissions mặc định từ Role
-      permissions: roleDoc ? roleDoc.permissions : []
-      ,
+      permissions: roleDoc ? roleDoc.permissions : [],
       password
     });
 
