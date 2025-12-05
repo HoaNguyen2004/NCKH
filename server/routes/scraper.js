@@ -303,26 +303,22 @@ module.exports = function(io) {
     }
   });
 
-  // Quét theo Feed Mode
+  // Quét theo Feed Mode - không cần từ khóa, cào tất cả và AI phân loại
   router.post('/scrape-feed', async (req, res) => {
-    const { email, feedUrl, keywordsText, scrollCount } = req.body;
+    const { email, feedUrl, scrollCount } = req.body;
 
-    if (!email || !feedUrl || !keywordsText) {
-      return res.json({ ok: false, error: 'Thiếu thông tin.' });
+    if (!email || !feedUrl) {
+      return res.json({ ok: false, error: 'Thiếu thông tin (email hoặc feedUrl).' });
     }
 
     try {
-      const keywords = keywordsText.split(/\r?\n|,/).map(x => x.trim()).filter(x => x);
-      if (!keywords.length) {
-        return res.json({ ok: false, error: 'Nhập ít nhất 1 từ khóa' });
-      }
-
       let items;
       try {
+        // Cào tất cả bài viết từ feed, không lọc từ khóa
         items = await scrapeFeedByKeywords(
           email, 
           feedUrl, 
-          keywords, 
+          [], // Không dùng từ khóa lọc
           scrollCount || 10
         );
       } catch (err) {
@@ -350,7 +346,7 @@ module.exports = function(io) {
             type: analyses[i]?.type || 'Unknown',
             estimatedPrice: analyses[i]?.estimatedPrice || 0,
             confidence: analyses[i]?.confidence || 50,
-            category: analyses[i]?.category || item.keyword || 'Khác'
+            category: analyses[i]?.category || 'Khác'
           }));
           
           console.log(`✅ Analyzed ${analyzedItems.length} feed posts with Gemini`);
@@ -372,7 +368,7 @@ module.exports = function(io) {
       const fileName = `feed_data_${Date.now()}.json`;
       const filePath = path.join(DATA_DIR, fileName);
       fs.writeFileSync(filePath, JSON.stringify({ 
-        keywords, feedUrl, 
+        feedUrl, 
         total: items.length,
         analyzed: analyzedItems.length,
         saved: saveResults

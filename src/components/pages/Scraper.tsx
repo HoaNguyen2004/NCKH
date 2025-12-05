@@ -28,7 +28,6 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const [url, setUrl] = useState('');
   const [keywords, setKeywords] = useState('');
   const [feedUrl, setFeedUrl] = useState('');
-  const [feedKeywords, setFeedKeywords] = useState('');
   const [scrollCount, setScrollCount] = useState(10);
   const [mode, setMode] = useState<'search' | 'feed'>('search');
   const [isLoading, setIsLoading] = useState(false);
@@ -146,9 +145,9 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   };
 
   const handleScrapeFeed = async () => {
-    if (!email || !feedUrl || !feedKeywords) {
+    if (!email || !feedUrl) {
       setStatus('error');
-      setMessage('Vui lòng điền đầy đủ thông tin');
+      setMessage('Vui lòng điền đầy đủ thông tin (email và link feed)');
       return;
     }
 
@@ -160,7 +159,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       const res = await fetch(`${scraperUrl}/scrape-feed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, feedUrl, keywordsText: feedKeywords, scrollCount })
+        body: JSON.stringify({ email, feedUrl, scrollCount })
       });
       const data = await res.json();
 
@@ -381,10 +380,10 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <span className="text-xl">📰</span>
-                  Bước 2: Cào Feed + Lọc từ khóa
+                  Bước 2: Cào Feed
                 </CardTitle>
                 <CardDescription>
-                  Vào trang feed và cuộn để load bài viết, sau đó lọc theo từ khóa
+                  Vào trang feed và cuộn để load tất cả bài viết, AI sẽ tự động phân loại
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -411,15 +410,6 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                       👥 Tất cả Groups
                     </Button>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Từ khóa lọc (mỗi dòng 1 từ khóa)</Label>
-                  <Textarea
-                    placeholder="iphone 15 pro max&#10;macbook m3&#10;samsung s24"
-                    rows={4}
-                    value={feedKeywords}
-                    onChange={(e) => setFeedKeywords(e.target.value)}
-                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Số lần cuộn trang: {scrollCount}</Label>

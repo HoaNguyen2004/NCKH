@@ -650,7 +650,6 @@ async function scrapeFeedByKeywords(email, feedUrl, keywords, scrollCount = 10) 
     await delay(3000);
 
     console.log(`⏳ Đang cuộn trang ${scrollCount} lần để load bài viết...`);
-    console.log(`📋 Từ khóa cần lọc: ${keywords.join(", ")}`);
     
     for (let i = 0; i < scrollCount; i++) {
       await page.evaluate(() => {
@@ -703,26 +702,36 @@ async function scrapeFeedByKeywords(email, feedUrl, keywords, scrollCount = 10) 
 
   console.log(`\n📊 Đã parse được ${allItems.length} bài viết từ JSON`);
 
-  // Lọc theo từ khóa
-  const keywordsLower = keywords.map(k => k.toLowerCase().trim()).filter(k => k.length > 0);
+  // Nếu có từ khóa thì lọc, không có thì lấy tất cả
+  const keywordsLower = (keywords || []).map(k => k.toLowerCase().trim()).filter(k => k.length > 0);
   
-  const filteredItems = allItems.filter(item => {
-    const textLower = item.fullText.toLowerCase();
-    const titleLower = item.title.toLowerCase();
-    
-    for (const kw of keywordsLower) {
-      const kwParts = kw.split(/\s+/);
-      const allPartsMatch = kwParts.every(part => 
-        textLower.includes(part) || titleLower.includes(part)
-      );
+  let filteredItems;
+  
+  if (keywordsLower.length > 0) {
+    // Có từ khóa -> lọc theo từ khóa
+    console.log(`📋 Từ khóa cần lọc: ${keywordsLower.join(", ")}`);
+    filteredItems = allItems.filter(item => {
+      const textLower = item.fullText.toLowerCase();
+      const titleLower = item.title.toLowerCase();
       
-      if (allPartsMatch) {
-        item.keyword = kw;
-        return true;
+      for (const kw of keywordsLower) {
+        const kwParts = kw.split(/\s+/);
+        const allPartsMatch = kwParts.every(part => 
+          textLower.includes(part) || titleLower.includes(part)
+        );
+        
+        if (allPartsMatch) {
+          item.keyword = kw;
+          return true;
+        }
       }
-    }
-    return false;
-  });
+      return false;
+    });
+  } else {
+    // Không có từ khóa -> lấy tất cả bài viết
+    console.log(`📋 Không có từ khóa, lấy tất cả bài viết`);
+    filteredItems = allItems;
+  }
 
   // Deduplicate
   const map = new Map();
@@ -737,7 +746,9 @@ async function scrapeFeedByKeywords(email, feedUrl, keywords, scrollCount = 10) 
   
   console.log(`\n🏁 TỔNG KẾT:`);
   console.log(`   - Tổng bài parse được: ${allItems.length}`);
-  console.log(`   - Bài khớp từ khóa: ${filteredItems.length}`);
+  if (keywordsLower.length > 0) {
+    console.log(`   - Bài khớp từ khóa: ${filteredItems.length}`);
+  }
   console.log(`   - Bài duy nhất (sau dedupe): ${uniqueItems.length}`);
 
   return uniqueItems;
