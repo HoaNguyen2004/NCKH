@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, Radar, RefreshCw } from 'lucide-react';
+import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -25,9 +25,6 @@ import {
   SelectValue,
 } from '../ui/select';
 import { ScrollArea } from '../ui/scroll-area';
-
-// URL của trang Scraper
-const SCRAPER_URL = 'http://localhost:3001';
 
 interface PostsManagementProps {
   posts: any[];
@@ -63,11 +60,6 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
     });
   }, [posts, filterType, filterPlatform, searchQuery]);
 
-  // Mở trang Scraper
-  const openScraperPage = () => {
-    window.open(SCRAPER_URL, '_blank');
-  };
-
   return (
     <main className="flex-1 overflow-auto">
       <header className="bg-white border-b border-gray-200 px-8 py-4">
@@ -96,25 +88,16 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
             </h1>
             <p className="text-gray-500">Xem và quản lý tất cả bài đăng đã thu thập • Cập nhật tự động khi có dữ liệu mới</p>
           </div>
-          <div className="flex gap-2">
-            {onRefresh && (
-              <Button 
-                variant="outline"
-                onClick={onRefresh}
-                title="Làm mới danh sách"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Làm mới
-              </Button>
-            )}
+          {onRefresh && (
             <Button 
-              className="bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white"
-              onClick={openScraperPage}
+              variant="outline"
+              onClick={onRefresh}
+              title="Làm mới danh sách"
             >
-              <Radar className="w-4 h-4 mr-2" />
-              🕵️ Quét dữ liệu mới
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Làm mới
             </Button>
-          </div>
+          )}
         </div>
       </header>
 
@@ -217,17 +200,9 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
           <CardContent>
             {filteredPosts.length === 0 ? (
               <div className="text-center py-12">
-                <Radar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <div className="text-gray-400 mb-2">Không có bài đăng</div>
-                <div className="text-gray-400 text-sm mb-4">Bài đăng sẽ hiển thị ở đây sau khi phân tích</div>
-                <Button 
-                  variant="outline"
-                  onClick={openScraperPage}
-                  className="border-purple-300 text-purple-600 hover:bg-purple-50"
-                >
-                  <Radar className="w-4 h-4 mr-2" />
-                  Bắt đầu quét dữ liệu
-                </Button>
+                <div className="text-gray-400 text-sm mb-4">Bài đăng sẽ hiển thị ở đây sau khi quét từ trang "Quét dữ liệu"</div>
               </div>
             ) : (
               <ScrollArea className="h-[500px]">
