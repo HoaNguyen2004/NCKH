@@ -8,17 +8,7 @@ const userSchema = new mongoose.Schema({
   phone:    { type: String, default: '' },
   company:  { type: String, default: '' },
   location: { type: String, default: '' },
-  // roleKey: khoá role (admin, manager, sales, user, ...)
-  role: {
-    type: String,
-    default: 'user',
-    trim: true
-  },
-  // Tham chiếu đến collection roles (Role model)
-  roleRef: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Role'
-  },
+  role:     { type: String, default: 'user' },
   permissions: {
     type: [String],
     default: []

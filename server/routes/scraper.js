@@ -1,7 +1,6 @@
 /**
  * Scraper Routes
  * API endpoints cho việc thu thập dữ liệu từ Facebook
- * Tích hợp Gemini AI để phân tích loại mua/bán, giá, độ tin cậy
  */
 
 const express = require('express');
@@ -9,7 +8,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 
-// Import services
+// Import scraper service
 const { 
   initLoginAndSaveCookies, 
   scrapeWithSearch, 
@@ -17,27 +16,11 @@ const {
   getCookiePath 
 } = require('../services/scraperService');
 
-const {
-  analyzePosts,
-  filterRelevantPosts,
-  fallbackAnalysis
-} = require('../services/geminiService');
-
-// Import models
-const Post = require('../models/Post');
-const Lead = require('../models/Lead');
-
 // Data directory để lưu kết quả
 const DATA_DIR = path.join(__dirname, '..', 'scraper-data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-
-// Hàm tạo hash từ content
-const createContentHash = (content) => {
-  if (!content) return '';
-  return content.toLowerCase().replace(/\s+/g, ' ').trim().substring(0, 100);
-};
 
 // Health check
 router.get('/health', (req, res) => {
@@ -76,326 +59,103 @@ router.post('/check-cookie', (req, res) => {
   }
 });
 
-/**
- * Lưu kết quả vào Posts và Leads
- * @param {Array} items - Các bài viết đã phân tích
- * @param {Object} io - Socket.IO instance (optional)
- */
-async function saveResultsToDatabase(items, io = null) {
-  const results = {
-    postsAdded: 0,
-    leadsAdded: 0,
-    duplicates: 0,
-    errors: 0,
-    newPosts: [],
-    newLeads: []
-  };
+// Quét theo Search Mode
+router.post('/scrape-filter', async (req, res) => {
+  const { email, url, keywordsText } = req.body;
 
-  // Lấy tất cả URL và hash đã có
-  const existingUrls = new Set();
-  const existingHashes = new Set();
-
-  const existingPosts = await Post.find({}, 'url contentHash');
-  existingPosts.forEach(p => {
-    if (p.url) existingUrls.add(p.url.split('?')[0]);
-    if (p.contentHash) existingHashes.add(p.contentHash);
-  });
-
-  for (const item of items) {
-    try {
-      const url = item.url?.split('?')[0];
-      const contentHash = createContentHash(item.fullText || item.title);
-
-      // Kiểm tra trùng lặp
-      if ((url && existingUrls.has(url)) || (contentHash && existingHashes.has(contentHash))) {
-        results.duplicates++;
-        continue;
-      }
-
-      // Tạo bài viết mới
-      const post = new Post({
-        title: item.title || (item.fullText?.substring(0, 80) + '...'),
-        fullContent: item.fullText || item.title,
-        type: item.type || 'Unknown',
-        category: item.category || item.keyword || 'Khác',
-        platform: 'Facebook',
-        sourceType: item.sourceType || 'group_post',
-        url: item.url,
-        image: item.image,
-        price: item.estimatedPrice || 0,
-        priceText: item.price,
-        author: item.author || 'Unknown',
-        authorId: item.uid,
-        location: item.location || 'Việt Nam',
-        keyword: item.keyword,
-        confidence: item.confidence || 50,
-        contentHash
-      });
-
-      await post.save();
-      results.postsAdded++;
-      results.newPosts.push(post);
-
-      // Thêm vào Set để tránh trùng trong cùng batch
-      if (url) existingUrls.add(url);
-      if (contentHash) existingHashes.add(contentHash);
-
-      // Nếu là bài MUA -> tạo Lead (khách hàng tiềm năng)
-      if (item.type === 'Buying') {
-        try {
-          const lead = new Lead({
-            name: item.author || 'Khách hàng từ Facebook',
-            phone: '', // Không có số điện thoại
-            email: '', // Không có email
-            location: item.location || 'Việt Nam',
-            interest: item.category || item.keyword || 'Sản phẩm',
-            type: 'buyer',
-            budget: item.estimatedPrice ? `${item.estimatedPrice.toLocaleString()}đ` : '',
-            status: 'new',
-            priority: item.confidence >= 70 ? 'high' : item.confidence >= 50 ? 'medium' : 'low',
-            source: 'Facebook Scraper',
-            notes: `Bài viết: ${item.fullText?.substring(0, 200)}...\n\nLink: ${item.url}`,
-            postUrl: item.url,
-            postId: post._id
-          });
-
-          await lead.save();
-          results.leadsAdded++;
-          results.newLeads.push(lead);
-        } catch (leadErr) {
-          console.error('Save lead error:', leadErr.message);
-        }
-      }
-
-    } catch (err) {
-      if (err.code === 11000) {
-        results.duplicates++;
-      } else {
-        results.errors++;
-        console.error('Save post error:', err.message);
-      }
-    }
+  if (!email || !url || !keywordsText) {
+    return res.json({ ok: false, error: 'Thiếu thông tin.' });
   }
 
-  // Emit socket event nếu có io
-  if (io && results.newPosts.length > 0) {
-    const postsData = results.newPosts.map(post => {
-      const postObj = post.toObject ? post.toObject() : post;
-      return {
-        _id: postObj._id,
-        id: postObj._id,
-        title: postObj.title,
-        fullContent: postObj.fullContent,
-        type: postObj.type,
-        platform: postObj.platform,
-        confidence: postObj.confidence,
-        createdAt: postObj.createdAt,
-        author: postObj.author,
-        price: postObj.price,
-        location: postObj.location,
-        category: postObj.category,
-        status: postObj.status,
-        url: postObj.url,
-        image: postObj.image
-      };
+  try {
+    const keywords = keywordsText.split(/\r?\n|,/).map(x => x.trim()).filter(x => x);
+    if (!keywords.length) {
+      return res.json({ ok: false, error: 'Nhập ít nhất 1 từ khóa' });
+    }
+
+    let items;
+    try {
+      items = await scrapeWithSearch(email, url, keywords);
+    } catch (err) {
+      if (err.message === 'NO_COOKIE') {
+        return res.json({ ok: false, error: 'Chưa có cookie login!' });
+      }
+      if (err.message === 'COOKIE_INVALID') {
+        return res.json({ ok: false, error: 'Cookie hết hạn, cần login lại!' });
+      }
+      throw err;
+    }
+
+    // Lưu kết quả
+    const fileName = `search_data_${Date.now()}.json`;
+    const filePath = path.join(DATA_DIR, fileName);
+    fs.writeFileSync(filePath, JSON.stringify({ keywords, url, total: items.length, matched: items }, null, 2));
+
+    return res.json({
+      ok: true,
+      file: fileName,
+      matched: items,
+      count: items.length,
+      totalItems: items.length
     });
 
-    io.to('posts').emit('posts:new', { count: results.newPosts.length, posts: postsData });
-    io.emit('posts:new', { count: results.newPosts.length, posts: postsData });
-    console.log(`📡 Emitted ${results.newPosts.length} new posts via socket`);
+  } catch (e) {
+    console.error('Scrape error:', e);
+    return res.json({ ok: false, error: e.message });
+  }
+});
+
+// Quét theo Feed Mode
+router.post('/scrape-feed', async (req, res) => {
+  const { email, feedUrl, keywordsText, scrollCount } = req.body;
+
+  if (!email || !feedUrl || !keywordsText) {
+    return res.json({ ok: false, error: 'Thiếu thông tin.' });
   }
 
-  return results;
-}
-
-// Factory function để nhận io
-module.exports = function(io) {
-  
-  // Quét theo Search Mode
-  router.post('/scrape-filter', async (req, res) => {
-    const { email, url, keywordsText } = req.body;
-
-    if (!email || !url || !keywordsText) {
-      return res.json({ ok: false, error: 'Thiếu thông tin.' });
+  try {
+    const keywords = keywordsText.split(/\r?\n|,/).map(x => x.trim()).filter(x => x);
+    if (!keywords.length) {
+      return res.json({ ok: false, error: 'Nhập ít nhất 1 từ khóa' });
     }
 
+    let items;
     try {
-      const keywords = keywordsText.split(/\r?\n|,/).map(x => x.trim()).filter(x => x);
-      if (!keywords.length) {
-        return res.json({ ok: false, error: 'Nhập ít nhất 1 từ khóa' });
+      items = await scrapeFeedByKeywords(
+        email, 
+        feedUrl, 
+        keywords, 
+        scrollCount || 10
+      );
+    } catch (err) {
+      if (err.message === 'NO_COOKIE') {
+        return res.json({ ok: false, error: 'Chưa có cookie login!' });
       }
-
-      let items;
-      try {
-        items = await scrapeWithSearch(email, url, keywords);
-      } catch (err) {
-        if (err.message === 'NO_COOKIE') {
-          return res.json({ ok: false, error: 'Chưa có cookie login!' });
-        }
-        if (err.message === 'COOKIE_INVALID') {
-          return res.json({ ok: false, error: 'Cookie hết hạn, cần login lại!' });
-        }
-        throw err;
+      if (err.message === 'COOKIE_INVALID') {
+        return res.json({ ok: false, error: 'Cookie hết hạn, cần login lại!' });
       }
-
-      console.log(`📦 Scraped ${items.length} items, analyzing with Gemini...`);
-
-      // Phân tích với Gemini
-      let analyzedItems = items;
-      if (items.length > 0) {
-        try {
-          // Lọc bài spam trước
-          const filteredItems = await filterRelevantPosts(items, keywords);
-          console.log(`🔍 Filtered: ${filteredItems.length}/${items.length} relevant posts`);
-
-          // Phân tích loại mua/bán, giá, độ tin cậy
-          const analyses = await analyzePosts(filteredItems);
-          
-          analyzedItems = filteredItems.map((item, i) => ({
-            ...item,
-            type: analyses[i]?.type || 'Unknown',
-            estimatedPrice: analyses[i]?.estimatedPrice || 0,
-            confidence: analyses[i]?.confidence || 50,
-            category: analyses[i]?.category || item.keyword || 'Khác'
-          }));
-          
-          console.log(`✅ Analyzed ${analyzedItems.length} posts with Gemini`);
-        } catch (geminiErr) {
-          console.error('Gemini analysis error:', geminiErr.message);
-          // Fallback
-          analyzedItems = items.map(item => {
-            const analysis = fallbackAnalysis(item.fullText || item.title);
-            return { ...item, ...analysis };
-          });
-        }
-      }
-
-      // Tự động lưu vào database
-      const saveResults = await saveResultsToDatabase(analyzedItems, io);
-      console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads`);
-
-      // Lưu file backup
-      const fileName = `search_data_${Date.now()}.json`;
-      const filePath = path.join(DATA_DIR, fileName);
-      fs.writeFileSync(filePath, JSON.stringify({ 
-        keywords, url, 
-        total: items.length, 
-        analyzed: analyzedItems.length,
-        saved: saveResults 
-      }, null, 2));
-
-      return res.json({
-        ok: true,
-        file: fileName,
-        matched: analyzedItems,
-        count: analyzedItems.length,
-        totalItems: items.length,
-        saved: {
-          posts: saveResults.postsAdded,
-          leads: saveResults.leadsAdded,
-          duplicates: saveResults.duplicates
-        }
-      });
-
-    } catch (e) {
-      console.error('Scrape error:', e);
-      return res.json({ ok: false, error: e.message });
-    }
-  });
-
-  // Quét theo Feed Mode
-  router.post('/scrape-feed', async (req, res) => {
-    const { email, feedUrl, keywordsText, scrollCount } = req.body;
-
-    if (!email || !feedUrl || !keywordsText) {
-      return res.json({ ok: false, error: 'Thiếu thông tin.' });
+      console.error(err);
+      return res.json({ ok: false, error: 'Lỗi Scraper: ' + err.message });
     }
 
-    try {
-      const keywords = keywordsText.split(/\r?\n|,/).map(x => x.trim()).filter(x => x);
-      if (!keywords.length) {
-        return res.json({ ok: false, error: 'Nhập ít nhất 1 từ khóa' });
-      }
+    // Lưu kết quả
+    const fileName = `feed_data_${Date.now()}.json`;
+    const filePath = path.join(DATA_DIR, fileName);
+    fs.writeFileSync(filePath, JSON.stringify({ keywords, feedUrl, total: items.length, matched: items }, null, 2));
 
-      let items;
-      try {
-        items = await scrapeFeedByKeywords(
-          email, 
-          feedUrl, 
-          keywords, 
-          scrollCount || 10
-        );
-      } catch (err) {
-        if (err.message === 'NO_COOKIE') {
-          return res.json({ ok: false, error: 'Chưa có cookie login!' });
-        }
-        if (err.message === 'COOKIE_INVALID') {
-          return res.json({ ok: false, error: 'Cookie hết hạn, cần login lại!' });
-        }
-        console.error(err);
-        return res.json({ ok: false, error: 'Lỗi Scraper: ' + err.message });
-      }
+    return res.json({
+      ok: true,
+      file: fileName,
+      matched: items,
+      count: items.length,
+      totalScraped: items.length
+    });
 
-      console.log(`📦 Scraped ${items.length} feed items, analyzing with Gemini...`);
+  } catch (e) {
+    console.error('Feed scrape error:', e);
+    return res.json({ ok: false, error: e.message });
+  }
+});
 
-      // Phân tích với Gemini
-      let analyzedItems = items;
-      if (items.length > 0) {
-        try {
-          // Phân tích loại mua/bán, giá, độ tin cậy
-          const analyses = await analyzePosts(items);
-          
-          analyzedItems = items.map((item, i) => ({
-            ...item,
-            type: analyses[i]?.type || 'Unknown',
-            estimatedPrice: analyses[i]?.estimatedPrice || 0,
-            confidence: analyses[i]?.confidence || 50,
-            category: analyses[i]?.category || item.keyword || 'Khác'
-          }));
-          
-          console.log(`✅ Analyzed ${analyzedItems.length} feed posts with Gemini`);
-        } catch (geminiErr) {
-          console.error('Gemini analysis error:', geminiErr.message);
-          // Fallback
-          analyzedItems = items.map(item => {
-            const analysis = fallbackAnalysis(item.fullText || item.title);
-            return { ...item, ...analysis };
-          });
-        }
-      }
+module.exports = router;
 
-      // Tự động lưu vào database
-      const saveResults = await saveResultsToDatabase(analyzedItems, io);
-      console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads`);
-
-      // Lưu file backup
-      const fileName = `feed_data_${Date.now()}.json`;
-      const filePath = path.join(DATA_DIR, fileName);
-      fs.writeFileSync(filePath, JSON.stringify({ 
-        keywords, feedUrl, 
-        total: items.length,
-        analyzed: analyzedItems.length,
-        saved: saveResults
-      }, null, 2));
-
-      return res.json({
-        ok: true,
-        file: fileName,
-        matched: analyzedItems,
-        count: analyzedItems.length,
-        totalScraped: items.length,
-        saved: {
-          posts: saveResults.postsAdded,
-          leads: saveResults.leadsAdded,
-          duplicates: saveResults.duplicates
-        }
-      });
-
-    } catch (e) {
-      console.error('Feed scrape error:', e);
-      return res.json({ ok: false, error: e.message });
-    }
-  });
-
-  return router;
-};
