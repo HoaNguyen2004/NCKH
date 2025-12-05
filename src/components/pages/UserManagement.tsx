@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getToken } from '../../utils/api';
 import { UserPlus, Search, MoreVertical, Mail, Phone, Shield } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -118,7 +119,10 @@ export function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users`);
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await fetch(`${API_BASE_URL}/users`, { headers });
       const data = await response.json();
       if (data.success && data.users) {
         const formattedUsers = data.users.map((u: any, idx: number) => ({
@@ -147,9 +151,12 @@ export function UserManagement() {
     }
 
     try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(`${API_BASE_URL}/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(formData)
       });
 
@@ -188,9 +195,12 @@ export function UserManagement() {
     }
 
     try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(`${API_BASE_URL}/users/${editingUserId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           fullName: formData.fullName,
           phone: formData.phone,
@@ -218,8 +228,12 @@ export function UserManagement() {
     if (!confirm('Bạn chắc chắn muốn xóa người dùng này?')) return;
 
     try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(`${API_BASE_URL}/users/${user._id || user.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers
       });
 
       const data = await response.json();
