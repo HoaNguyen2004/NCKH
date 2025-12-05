@@ -80,8 +80,9 @@ router.post('/check-cookie', (req, res) => {
  * Lưu kết quả vào Posts và Leads
  * @param {Array} items - Các bài viết đã phân tích
  * @param {Object} io - Socket.IO instance (optional)
+ * @param {Object} scrapedByInfo - Thông tin người quét { userId, email }
  */
-async function saveResultsToDatabase(items, io = null) {
+async function saveResultsToDatabase(items, io = null, scrapedByInfo = null) {
   const results = {
     postsAdded: 0,
     leadsAdded: 0,
@@ -129,7 +130,10 @@ async function saveResultsToDatabase(items, io = null) {
         location: item.location || 'Việt Nam',
         keyword: item.keyword,
         confidence: item.confidence || 50,
-        contentHash
+        contentHash,
+        // Lưu thông tin người quét
+        scrapedBy: scrapedByInfo?.userId || null,
+        scrapedByEmail: scrapedByInfo?.email || null
       });
 
       await post.save();
@@ -208,6 +212,27 @@ async function saveResultsToDatabase(items, io = null) {
   return results;
 }
 
+// Helper: Lấy thông tin user từ token
+async function getUserFromToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  
+  try {
+    const jwt = require('jsonwebtoken');
+    const User = require('../models/User');
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+    const token = authHeader.slice(7);
+    const payload = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(payload.userId).select('_id email role');
+    return user;
+  } catch (err) {
+    console.log('⚠️ Could not identify scraper user:', err.message);
+    return null;
+  }
+}
+
 // Factory function để nhận io
 module.exports = function(io) {
   
@@ -220,6 +245,16 @@ module.exports = function(io) {
     }
 
     try {
+      // Lấy thông tin người quét từ token
+      const scrapedByUser = await getUserFromToken(req);
+      const scrapedByInfo = scrapedByUser 
+        ? { userId: scrapedByUser._id, email: scrapedByUser.email }
+        : null;
+      
+      if (scrapedByInfo) {
+        console.log(`👤 Scraping by user: ${scrapedByInfo.email}`);
+      }
+      
       const keywords = keywordsText.split(/\r?\n|,/).map(x => x.trim()).filter(x => x);
       if (!keywords.length) {
         return res.json({ ok: false, error: 'Nhập ít nhất 1 từ khóa' });
@@ -270,8 +305,8 @@ module.exports = function(io) {
         }
       }
 
-      // Tự động lưu vào database
-      const saveResults = await saveResultsToDatabase(analyzedItems, io);
+      // Tự động lưu vào database (kèm thông tin người quét)
+      const saveResults = await saveResultsToDatabase(analyzedItems, io, scrapedByInfo);
       console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads`);
 
       // Lưu file backup
@@ -281,7 +316,8 @@ module.exports = function(io) {
         keywords, url, 
         total: items.length, 
         analyzed: analyzedItems.length,
-        saved: saveResults 
+        saved: saveResults,
+        scrapedBy: scrapedByInfo?.email || 'unknown'
       }, null, 2));
 
       return res.json({
@@ -312,6 +348,16 @@ module.exports = function(io) {
     }
 
     try {
+      // Lấy thông tin người quét từ token
+      const scrapedByUser = await getUserFromToken(req);
+      const scrapedByInfo = scrapedByUser 
+        ? { userId: scrapedByUser._id, email: scrapedByUser.email }
+        : null;
+      
+      if (scrapedByInfo) {
+        console.log(`👤 Feed scraping by user: ${scrapedByInfo.email}`);
+      }
+      
       let items;
       try {
         // Cào tất cả bài viết từ feed, không lọc từ khóa
@@ -360,8 +406,8 @@ module.exports = function(io) {
         }
       }
 
-      // Tự động lưu vào database
-      const saveResults = await saveResultsToDatabase(analyzedItems, io);
+      // Tự động lưu vào database (kèm thông tin người quét)
+      const saveResults = await saveResultsToDatabase(analyzedItems, io, scrapedByInfo);
       console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads`);
 
       // Lưu file backup
@@ -371,7 +417,8 @@ module.exports = function(io) {
         feedUrl, 
         total: items.length,
         analyzed: analyzedItems.length,
-        saved: saveResults
+        saved: saveResults,
+        scrapedBy: scrapedByInfo?.email || 'unknown'
       }, null, 2));
 
       return res.json({

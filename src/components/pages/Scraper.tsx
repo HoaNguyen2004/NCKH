@@ -7,6 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getToken } from '../../utils/api';
 
 interface ScraperProps {
   onNavigateToPosts?: () => void;
@@ -110,9 +111,13 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setMessage('Đang quét dữ liệu và phân tích với AI...');
 
     try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
       const res = await fetch(`${scraperUrl}/scrape-filter`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ email, url, keywordsText: keywords })
       });
       const data = await res.json();
@@ -156,9 +161,13 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setMessage('Đang quét feed và phân tích với AI...');
 
     try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
       const res = await fetch(`${scraperUrl}/scrape-feed`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ email, feedUrl, scrollCount })
       });
       const data = await res.json();

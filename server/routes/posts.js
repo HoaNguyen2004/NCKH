@@ -1,6 +1,7 @@
 /* server/routes/posts.js */
 const express = require('express');
 const Post = require('../models/Post');
+const { requireAuth } = require('../middleware/auth');
 
 // Factory function nhận io để emit events
 module.exports = function(io) {
@@ -14,6 +15,10 @@ module.exports = function(io) {
 
   // ==========================================
   // GET /api/posts - Lấy danh sách bài viết
+  // Nếu có header Authorization: 
+  //   - Sales chỉ thấy bài của mình (scrapedBy = userId)
+  //   - Admin/Manager thấy tất cả
+  // Nếu không có auth: trả về tất cả (cho backward compatibility)
   // ==========================================
   router.get('/', async (req, res) => {
     try {
@@ -33,6 +38,32 @@ module.exports = function(io) {
       if (platform && platform !== 'all') filter.platform = platform;
       if (status && status !== 'all') filter.status = status;
       if (keyword) filter.keyword = { $regex: keyword, $options: 'i' };
+
+      // Kiểm tra nếu có user đăng nhập và là sales -> chỉ lấy bài của họ
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const jwt = require('jsonwebtoken');
+          const User = require('../models/User');
+          const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+          const token = authHeader.slice(7);
+          const payload = jwt.verify(token, JWT_SECRET);
+          const user = await User.findById(payload.userId).select('role email');
+          
+          if (user && user.role === 'sales') {
+            // Sales chỉ thấy bài của mình
+            filter.$or = [
+              { scrapedBy: user._id },
+              { scrapedByEmail: user.email }
+            ];
+            console.log(`🔒 Sales user ${user.email} - filtering posts by scrapedBy`);
+          } else if (user) {
+            console.log(`👑 ${user.role} user ${user.email} - showing all posts`);
+          }
+        } catch (authErr) {
+          console.log('⚠️ Auth check failed, showing all posts:', authErr.message);
+        }
+      }
 
       console.log('🔍 Filter:', filter);
 
@@ -61,18 +92,45 @@ module.exports = function(io) {
 
   // ==========================================
   // GET /api/posts/stats - Thống kê bài viết
+  // Sales chỉ thấy stats của bài mình quét
   // ==========================================
   router.get('/stats', async (req, res) => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // Kiểm tra nếu có user đăng nhập và là sales -> chỉ đếm bài của họ
+      let baseFilter = {};
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const jwt = require('jsonwebtoken');
+          const User = require('../models/User');
+          const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+          const token = authHeader.slice(7);
+          const payload = jwt.verify(token, JWT_SECRET);
+          const user = await User.findById(payload.userId).select('role email');
+          
+          if (user && user.role === 'sales') {
+            baseFilter = {
+              $or: [
+                { scrapedBy: user._id },
+                { scrapedByEmail: user.email }
+              ]
+            };
+            console.log(`🔒 Sales stats for ${user.email}`);
+          }
+        } catch (authErr) {
+          console.log('⚠️ Auth check failed for stats:', authErr.message);
+        }
+      }
+
       const [total, buying, selling, facebook, todayCount] = await Promise.all([
-        Post.countDocuments(),
-        Post.countDocuments({ type: 'Buying' }),
-        Post.countDocuments({ type: 'Selling' }),
-        Post.countDocuments({ platform: 'Facebook' }),
-        Post.countDocuments({ createdAt: { $gte: today } })
+        Post.countDocuments(baseFilter),
+        Post.countDocuments({ ...baseFilter, type: 'Buying' }),
+        Post.countDocuments({ ...baseFilter, type: 'Selling' }),
+        Post.countDocuments({ ...baseFilter, platform: 'Facebook' }),
+        Post.countDocuments({ ...baseFilter, createdAt: { $gte: today } })
       ]);
 
       console.log(`📊 Stats: Total=${total}, Buying=${buying}, Selling=${selling}, Facebook=${facebook}, Today=${todayCount}`);
@@ -113,12 +171,35 @@ module.exports = function(io) {
 
   // ==========================================
   // POST /api/posts - Thêm bài viết mới (từ scraper)
+  // Lưu thông tin người quét (scrapedBy, scrapedByEmail)
   // ==========================================
   router.post('/', async (req, res) => {
     try {
       console.log('📥 Received POST /api/posts request');
-      const { items } = req.body;
-      console.log(`📦 Received ${items?.length || 0} items`);
+      const { items, scrapedByEmail } = req.body;
+      console.log(`📦 Received ${items?.length || 0} items from ${scrapedByEmail || 'unknown'}`);
+      
+      // Lấy thông tin user từ token nếu có
+      let scrapedByUserId = null;
+      let scrapedByUserEmail = scrapedByEmail || null;
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const jwt = require('jsonwebtoken');
+          const User = require('../models/User');
+          const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+          const token = authHeader.slice(7);
+          const payload = jwt.verify(token, JWT_SECRET);
+          const user = await User.findById(payload.userId).select('_id email');
+          if (user) {
+            scrapedByUserId = user._id;
+            scrapedByUserEmail = user.email;
+            console.log(`👤 Posts scraped by: ${user.email}`);
+          }
+        } catch (authErr) {
+          console.log('⚠️ Could not identify scraper user:', authErr.message);
+        }
+      }
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         console.warn('⚠️ No items in request');
@@ -189,7 +270,10 @@ module.exports = function(io) {
             location: item.location || 'Việt Nam',
             keyword: item.keyword,
             confidence: Math.floor(Math.random() * 20) + 80,
-            contentHash
+            contentHash,
+            // Lưu thông tin người quét
+            scrapedBy: scrapedByUserId,
+            scrapedByEmail: scrapedByUserEmail
           });
 
           await post.save();

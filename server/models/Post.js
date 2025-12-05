@@ -92,7 +92,18 @@ const postSchema = new mongoose.Schema({
   processedAt: Date,
   
   // Ghi chú
-  notes: String
+  notes: String,
+  
+  // Người quét dữ liệu (userId)
+  scrapedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  },
+  scrapedByEmail: {
+    type: String,
+    index: true
+  }
 }, {
   timestamps: true // Tự động thêm createdAt, updatedAt
 });

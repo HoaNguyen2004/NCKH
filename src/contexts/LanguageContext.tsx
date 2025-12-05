@@ -480,7 +480,26 @@ const translations = {
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('vi');
+  // Khởi tạo ngôn ngữ từ localStorage hoặc mặc định là 'vi'
+  const [language, setLanguageState] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem('aifilter.language');
+      if (saved === 'en' || saved === 'vi') return saved;
+    } catch {
+      // ignore
+    }
+    return 'vi';
+  });
+
+  // Wrapper để lưu vào localStorage khi thay đổi ngôn ngữ
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    try {
+      localStorage.setItem('aifilter.language', lang);
+    } catch {
+      // ignore
+    }
+  };
 
   const t = (key: string): string => {
     return translations[language][key as keyof typeof translations['vi']] || key;

@@ -19,7 +19,7 @@ import { AISettings } from './components/pages/AISettings';
 import { DataSources } from './components/pages/DataSources';
 import { History } from './components/pages/History';
 import { Scraper } from './components/pages/Scraper';
-import { login as apiLogin, register as apiRegister } from './utils/api';
+import { login as apiLogin, register as apiRegister, getToken, fetchPosts as apiFetchPosts } from './utils/api';
 
 // Backend API URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -94,11 +94,14 @@ export default function App() {
   // SOCKET.IO CONNECTION & REAL-TIME UPDATES
   // ==========================================
   
-  // Fetch posts from API
+  // Fetch posts from API (với auth token để phân quyền theo role)
   const fetchPosts = useCallback(async () => {
     try {
       console.log(`📡 Fetching posts from ${API_URL}/posts`);
-      const response = await fetch(`${API_URL}/posts?limit=200`);
+      const token = getToken();
+      const response = await fetch(`${API_URL}/posts?limit=200`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

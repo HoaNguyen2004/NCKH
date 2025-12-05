@@ -1,0 +1,15 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="48" fill="#111827"/>
+  <g stroke="white" stroke-width="2" fill="none">
+    <!-- Planet circle -->
+    <ellipse cx="50" cy="50" rx="30" ry="30"/>
+    <!-- Orbit ring -->
+    <ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(-20 50 50)"/>
+    <!-- Compass needle -->
+    <path d="M50 25 L55 50 L50 75 L45 50 Z" fill="white" stroke="none"/>
+    <circle cx="50" cy="50" r="5"/>
+    <!-- Star -->
+    <path d="M75 22 L77 28 L83 28 L78 32 L80 38 L75 34 L70 38 L72 32 L67 28 L73 28 Z" fill="white" stroke="none"/>
+  </g>
+</svg>
+

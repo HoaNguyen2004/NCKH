@@ -69,3 +69,57 @@ export async function register(data: any) {
   const me = await getMe();
   return { success: true, user: me.user };
 }
+
+// ✅ Lấy danh sách bài đăng (có phân quyền theo role)
+export async function fetchPosts(params?: { type?: string; platform?: string; status?: string; keyword?: string; limit?: number; skip?: number }) {
+  const token = getToken();
+  const queryParams = new URLSearchParams();
+  
+  if (params?.type) queryParams.append('type', params.type);
+  if (params?.platform) queryParams.append('platform', params.platform);
+  if (params?.status) queryParams.append('status', params.status);
+  if (params?.keyword) queryParams.append('keyword', params.keyword);
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.skip) queryParams.append('skip', params.skip.toString());
+  
+  const url = `${API_BASE_URL}/posts${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+  
+  const res = await fetch(url, {
+    headers: getHeaders(token || undefined),
+  });
+  
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || "Lấy bài đăng thất bại");
+  
+  return json;
+}
+
+// ✅ Lấy thống kê bài đăng (có phân quyền theo role)
+export async function fetchPostsStats() {
+  const token = getToken();
+  
+  const res = await fetch(`${API_BASE_URL}/posts/stats`, {
+    headers: getHeaders(token || undefined),
+  });
+  
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || "Lấy thống kê thất bại");
+  
+  return json;
+}
+
+// ✅ Lưu bài đăng mới (kèm thông tin người quét)
+export async function savePosts(items: any[]) {
+  const token = getToken();
+  
+  const res = await fetch(`${API_BASE_URL}/posts`, {
+    method: "POST",
+    headers: getHeaders(token || undefined),
+    body: JSON.stringify({ items }),
+  });
+  
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || "Lưu bài đăng thất bại");
+  
+  return json;
+}
