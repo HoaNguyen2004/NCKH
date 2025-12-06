@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../ui/card';
+import { forgotPasswordOtp, resetPasswordWithOtp } from '../../utils/api';
 
 interface LoginProps {
   onLogin: (email: string, password: string, remember?: boolean) => void;
@@ -45,6 +46,11 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStatus, setForgotStatus] = useState<string | null>(null);
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,7 +194,15 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setForgotOpen(true); setForgotEmail(email); setForgotStatus(null); }}
+                  onClick={() => {
+                    setForgotOpen(true);
+                    setForgotEmail(email);
+                    setForgotStatus(null);
+                    setForgotStep(1);
+                    setOtp('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                  }}
                   className="text-sm text-blue-600 hover:underline"
                 >
                   Quên mật khẩu?
@@ -252,40 +266,192 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
                 <div className="bg-white rounded-lg p-6 w-full max-w-md">
                   <h3 className="text-lg font-medium">Quên mật khẩu</h3>
-                  <p className="text-sm text-gray-600">Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu.</p>
-                  <div className="mt-4">
-                    <Input value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="your@email.com" />
-                  </div>
-                    <div className="mt-4 flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setForgotOpen(false)}>Hủy</Button>
-                    <Button onClick={async () => {
-                      if (!forgotEmail) { setForgotStatus('Vui lòng nhập email'); return; }
-                      try {
-                        setForgotStatus('Đang gửi...');
-                        const resp = await fetch('/api/auth/forgot', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: forgotEmail })
-                        });
-                        const data = await resp.json();
-                        if (resp.ok) {
-                          if (data.resetUrl) {
-                            // SMTP not configured on server: show link to user for dev
-                            setForgotStatus('Reset link (dev): ' + data.resetUrl);
-                          } else {
-                            setForgotStatus('Nếu email tồn tại, hướng dẫn đã được gửi.');
-                          }
-                          setTimeout(() => setForgotOpen(false), 1800);
-                        } else {
-                          setForgotStatus(data.message || 'Lỗi khi gửi email');
-                        }
-                      } catch (err) {
-                        console.error(err);
-                        setForgotStatus('Lỗi kết nối đến server');
-                      }
-                    }}>Gửi</Button>
-                  </div>
-                  {forgotStatus && <div className="mt-3 text-sm text-green-600 break-words">{forgotStatus}</div>}
+                  {forgotStep === 1 ? (
+                    <>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Nhập email của bạn để nhận mã xác nhận (OTP) đặt lại mật khẩu.
+                      </p>
+                      <div className="mt-4 space-y-2">
+                        <Label htmlFor="forgot-email">Email</Label>
+                        <Input
+                          id="forgot-email"
+                          type="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="your@email.com"
+                          disabled={forgotLoading}
+                        />
+                      </div>
+                      <div className="mt-4 flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setForgotOpen(false);
+                            setForgotStatus(null);
+                            setForgotStep(1);
+                            setOtp('');
+                            setNewPassword('');
+                            setConfirmNewPassword('');
+                          }}
+                          disabled={forgotLoading}
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          onClick={async () => {
+                            if (!forgotEmail) {
+                              setForgotStatus('Vui lòng nhập email');
+                              return;
+                            }
+                            try {
+                              setForgotLoading(true);
+                              setForgotStatus('Đang gửi mã xác nhận...');
+                              await forgotPasswordOtp(forgotEmail);
+                              setForgotStatus(
+                                'Nếu email tồn tại, mã xác nhận đã được gửi. Vui lòng kiểm tra hộp thư.'
+                              );
+                              setForgotStep(2);
+                            } catch (err: any) {
+                              console.error(err);
+                              setForgotStatus(err?.message || 'Lỗi khi gửi mã xác nhận');
+                            } finally {
+                              setForgotLoading(false);
+                            }
+                          }}
+                          disabled={forgotLoading}
+                        >
+                          {forgotLoading ? 'Đang gửi...' : 'Gửi mã'}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Nhập mã xác nhận đã được gửi đến email của bạn và đặt mật khẩu mới.
+                      </p>
+                      <div className="mt-4 space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="forgot-otp">Mã xác nhận (OTP)</Label>
+                          <Input
+                            id="forgot-otp"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            placeholder="Nhập mã 6 số"
+                            disabled={forgotLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="new-password">Mật khẩu mới</Label>
+                          <Input
+                            id="new-password"
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="••••••••"
+                            disabled={forgotLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="confirm-new-password">Xác nhận mật khẩu mới</Label>
+                          <Input
+                            id="confirm-new-password"
+                            type="password"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            placeholder="••••••••"
+                            disabled={forgotLoading}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-between gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setForgotStep(1);
+                            setOtp('');
+                            setNewPassword('');
+                            setConfirmNewPassword('');
+                            setForgotStatus(null);
+                          }}
+                          disabled={forgotLoading}
+                        >
+                          Quay lại
+                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={async () => {
+                              // Cho phép gửi lại mã OTP
+                              if (!forgotEmail) {
+                                setForgotStatus('Vui lòng nhập email để gửi lại mã');
+                                setForgotStep(1);
+                                return;
+                              }
+                              try {
+                                setForgotLoading(true);
+                                setForgotStatus('Đang gửi lại mã xác nhận...');
+                                await forgotPasswordOtp(forgotEmail);
+                                setForgotStatus(
+                                  'Nếu email tồn tại, mã xác nhận mới đã được gửi. Vui lòng kiểm tra hộp thư.'
+                                );
+                              } catch (err: any) {
+                                console.error(err);
+                                setForgotStatus(err?.message || 'Lỗi khi gửi lại mã xác nhận');
+                              } finally {
+                                setForgotLoading(false);
+                              }
+                            }}
+                            disabled={forgotLoading}
+                          >
+                            Gửi lại mã
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              if (!forgotEmail || !otp || !newPassword || !confirmNewPassword) {
+                                setForgotStatus('Vui lòng nhập đầy đủ thông tin');
+                                return;
+                              }
+                              try {
+                                setForgotLoading(true);
+                                setForgotStatus('Đang đổi mật khẩu...');
+                                const result = await resetPasswordWithOtp({
+                                  email: forgotEmail,
+                                  otp,
+                                  password: newPassword,
+                                  confirmPassword: confirmNewPassword,
+                                });
+                                setForgotStatus(result?.message || 'Đổi mật khẩu thành công');
+                                // Optional: tự động điền mật khẩu mới vào form đăng nhập
+                                setPassword(newPassword);
+                                setTimeout(() => {
+                                  setForgotOpen(false);
+                                  setForgotStep(1);
+                                  setOtp('');
+                                  setNewPassword('');
+                                  setConfirmNewPassword('');
+                                  setForgotStatus(null);
+                                }, 2000);
+                              } catch (err: any) {
+                                console.error(err);
+                                setForgotStatus(err?.message || 'Đổi mật khẩu thất bại');
+                              } finally {
+                                setForgotLoading(false);
+                              }
+                            }}
+                            disabled={forgotLoading}
+                          >
+                            {forgotLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {forgotStatus && (
+                    <div className="mt-3 text-sm text-green-600 break-words">
+                      {forgotStatus}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

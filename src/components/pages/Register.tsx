@@ -39,6 +39,7 @@ const LogoIcon = ({ className = "w-16 h-16" }: { className?: string }) => (
 
 // API URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { sendRegisterOtp } from '../../utils/api';
 
 interface RegisterProps {
   onRegister: (userData: any) => void;
@@ -55,6 +56,7 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
     role: '',
     password: '',
     confirmPassword: '',
+    otp: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -66,6 +68,8 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [emailCheckTimeout, setEmailCheckTimeout] = useState<NodeJS.Timeout | null>(null);
   const [phoneCheckTimeout, setPhoneCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpInfo, setOtpInfo] = useState<string | null>(null);
 
   // Hàm kiểm tra email đã tồn tại chưa
   const checkEmailExists = useCallback(async (email: string) => {
@@ -175,6 +179,10 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
 
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu không khớp';
+    }
+
+    if (!formData.otp.trim()) {
+      newErrors.otp = 'Vui lòng nhập mã xác nhận đã gửi về email';
     }
 
     if (!agreeTerms) {
@@ -349,6 +357,64 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                   <p className="text-green-500 text-sm">✓ Email có thể sử dụng</p>
                 )}
               </div>
+
+              <div className="mt-2 grid grid-cols-[2fr,1fr] gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="register-otp">Mã xác nhận *</Label>
+                  <Input
+                    id="register-otp"
+                    placeholder="Nhập mã 6 số đã gửi về email"
+                    value={formData.otp}
+                    onChange={(e) => handleChange('otp', e.target.value)}
+                    className={errors.otp ? 'border-red-500' : ''}
+                  />
+                  {errors.otp && (
+                    <p className="text-red-500 text-sm">{errors.otp}</p>
+                  )}
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={
+                      otpSending ||
+                      !formData.email ||
+                      !!errors.email ||
+                      emailStatus === 'checking' ||
+                      emailStatus === 'taken'
+                    }
+                    onClick={async () => {
+                      if (!formData.email) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          email: prev.email || 'Vui lòng nhập email trước khi gửi mã',
+                        }));
+                        return;
+                      }
+
+                      try {
+                        setOtpSending(true);
+                        setOtpInfo('Đang gửi mã xác nhận...');
+                        await sendRegisterOtp(formData.email);
+                        setOtpInfo(
+                          'Mã xác nhận đăng ký đã được gửi. Vui lòng kiểm tra hộp thư (bao gồm cả mục Spam).'
+                        );
+                      } catch (err: any) {
+                        console.error('Send register OTP failed', err);
+                        setOtpInfo(err?.message || 'Không thể gửi mã xác nhận. Vui lòng thử lại.');
+                      } finally {
+                        setOtpSending(false);
+                      }
+                    }}
+                  >
+                    {otpSending ? 'Đang gửi...' : 'Gửi mã'}
+                  </Button>
+                </div>
+              </div>
+              {otpInfo && (
+                <p className="text-xs text-green-600 mt-1">{otpInfo}</p>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

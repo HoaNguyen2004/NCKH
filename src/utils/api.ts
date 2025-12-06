@@ -70,6 +70,67 @@ export async function register(data: any) {
   return { success: true, user: me.user };
 }
 
+// ✅ Gửi mã OTP xác nhận email khi đăng ký
+export async function sendRegisterOtp(email: string) {
+  const res = await fetch(`${API_BASE_URL}/auth/register-send-otp`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ email }),
+  });
+
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.message || "Gửi mã xác nhận thất bại");
+    return json;
+  } else {
+    const text = await res.text();
+    throw new Error(
+      text || "Máy chủ trả về dữ liệu không hợp lệ (không phải JSON). Vui lòng kiểm tra lại VITE_API_URL và URL backend."
+    );
+  }
+}
+
+// ✅ Quên mật khẩu bằng OTP - gửi mã xác nhận về email
+export async function forgotPasswordOtp(email: string) {
+  const res = await fetch(`${API_BASE_URL}/auth/forgot-otp`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ email }),
+  });
+
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.message || "Gửi mã xác nhận thất bại");
+    return json;
+  } else {
+    const text = await res.text();
+    throw new Error(
+      text || "Máy chủ trả về dữ liệu không hợp lệ (không phải JSON). Vui lòng kiểm tra lại VITE_API_URL và URL backend."
+    );
+  }
+}
+
+// ✅ Đặt lại mật khẩu bằng OTP
+export async function resetPasswordWithOtp(data: {
+  email: string;
+  otp: string;
+  password: string;
+  confirmPassword: string;
+}) {
+  const res = await fetch(`${API_BASE_URL}/auth/reset-with-otp`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.message || "Đặt lại mật khẩu thất bại");
+
+  return json;
+}
+
 // ✅ Lấy danh sách bài đăng (có phân quyền theo role)
 export async function fetchPosts(params?: { type?: string; platform?: string; status?: string; keyword?: string; limit?: number; skip?: number }) {
   const token = getToken();

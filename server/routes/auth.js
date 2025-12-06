@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const VerificationCode = require('../models/VerificationCode');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -78,36 +79,80 @@ router.get('/check-phone', async (req, res) => {
 });
 
 // POST /api/auth/register
+// Yêu cầu mã OTP đã được gửi tới email thông qua /register-send-otp
 router.post('/register', async (req, res) => {
   try {
-    const { fullName, email, phone, company, location, role, password, confirmPassword } = req.body;
+    const {
+      fullName,
+      email,
+      phone,
+      company,
+      location,
+      role,
+      password,
+      confirmPassword,
+      otp,
+    } = req.body;
 
     if (!fullName || !email || !password || !confirmPassword) {
-      return res.status(400).json({ success: false, message: 'Vui lòng nhập đủ thông tin bắt buộc' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Vui lòng nhập đủ thông tin bắt buộc' });
     }
     if (password !== confirmPassword) {
-      return res.status(400).json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
+    }
+    if (!otp) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Vui lòng nhập mã xác nhận đã gửi về email' });
     }
 
     // Chuẩn hóa email
     const normalizedEmail = email.toLowerCase().trim();
-    
+
     // Kiểm tra email đã tồn tại chưa
     const emailExisted = await User.findOne({ email: normalizedEmail });
     if (emailExisted) {
-      return res.status(409).json({ success: false, message: 'Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.' });
+      return res.status(409).json({
+        success: false,
+        message: 'Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.',
+      });
     }
-    
+
     // Kiểm tra số điện thoại đã tồn tại chưa (nếu có nhập)
     if (phone) {
-      const normalizedPhone = phone.replace(/[\s\-\.]/g, '').trim();
-      if (normalizedPhone) {
-        const phoneExisted = await User.findOne({ phone: normalizedPhone });
+      const normalizedPhoneCheck = phone.replace(/[\s\-\.]/g, '').trim();
+      if (normalizedPhoneCheck) {
+        const phoneExisted = await User.findOne({ phone: normalizedPhoneCheck });
         if (phoneExisted) {
-          return res.status(409).json({ success: false, message: 'Số điện thoại này đã được đăng ký. Vui lòng sử dụng số khác.' });
+          return res.status(409).json({
+            success: false,
+            message: 'Số điện thoại này đã được đăng ký. Vui lòng sử dụng số khác.',
+          });
         }
       }
     }
+
+    // Kiểm tra mã OTP đăng ký
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    const codeDoc = await VerificationCode.findOne({
+      email: normalizedEmail,
+      purpose: 'register',
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!codeDoc || codeDoc.codeHash !== otpHash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã xác nhận không đúng hoặc đã hết hạn. Vui lòng gửi lại mã.',
+      });
+    }
+
+    // Xóa mã sau khi sử dụng
+    await VerificationCode.deleteOne({ _id: codeDoc._id });
 
     // Xác định roleKey (admin, manager, sales, user, ...)
     const roleKey = role || 'user';
@@ -126,7 +171,7 @@ router.post('/register', async (req, res) => {
       roleRef: roleDoc ? roleDoc._id : undefined,
       // Nếu muốn, có thể gán luôn permissions mặc định từ Role
       permissions: roleDoc ? roleDoc.permissions : [],
-      password
+      password,
     });
 
     const token = signToken(user._id.toString());
@@ -141,9 +186,77 @@ router.post('/register', async (req, res) => {
         phone: user.phone,
         company: user.company,
         location: user.location,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// Gửi mã OTP để xác nhận email khi đăng ký
+// POST /api/auth/register-send-otp
+router.post('/register-send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Thiếu email' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Không cho gửi OTP nếu email đã tồn tại
+    const emailExisted = await User.findOne({ email: normalizedEmail });
+    if (emailExisted) {
+      return res.status(409).json({
+        success: false,
+        message: 'Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập.',
+      });
+    }
+
+    // Tạo mã OTP 6 số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+    // Lưu/ghi đè mã OTP cho email này (purpose: register)
+    await VerificationCode.findOneAndUpdate(
+      { email: normalizedEmail, purpose: 'register' },
+      { codeHash: otpHash, purpose: 'register', expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const transporter = createTransporter();
+    const mailOptions = {
+      to: normalizedEmail,
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER || 'no-reply@example.com',
+      subject: 'Mã xác nhận đăng ký tài khoản',
+      text:
+        `Mã xác nhận đăng ký tài khoản của bạn là: ${otp}\n\n` +
+        `Mã có hiệu lực trong 10 phút. Nếu bạn không yêu cầu đăng ký, hãy bỏ qua email này.`,
+    };
+
+    if (transporter) {
+      transporter.sendMail(mailOptions, (err) => {
+        if (err) {
+          console.error('Error sending register OTP email', err);
+          return res
+            .status(500)
+            .json({ success: false, message: 'Không thể gửi email mã xác nhận đăng ký' });
+        }
+        return res.json({
+          success: true,
+          message: 'Mã xác nhận đăng ký đã được gửi. Vui lòng kiểm tra hộp thư.',
+        });
+      });
+    } else {
+      console.warn('SMTP not configured. Register OTP code (dev only):', otp);
+      return res.json({
+        success: true,
+        message:
+          'Mã xác nhận đăng ký đã được tạo (SMTP chưa cấu hình, xem log server để lấy mã trong môi trường dev).',
+      });
+    }
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
@@ -227,11 +340,21 @@ router.post('/forgot', async (req, res) => {
 router.post('/reset', async (req, res) => {
   try {
     const { token, email, password, confirmPassword } = req.body;
-    if (!token || !email || !password || !confirmPassword) return res.status(400).json({ success: false, message: 'Thiếu tham số' });
-    if (password !== confirmPassword) return res.status(400).json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
+    if (!token || !email || !password || !confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Thiếu tham số' });
+    }
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
+    }
 
-    const user = await User.findOne({ email, resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
-    if (!user) return res.status(400).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn' });
+    const user = await User.findOne({
+      email,
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
 
     user.password = password;
     user.resetPasswordToken = undefined;
@@ -241,6 +364,130 @@ router.post('/reset', async (req, res) => {
     // Optionally sign a token and return it so user is logged in after reset
     const authToken = signToken(user._id.toString());
     return res.json({ success: true, message: 'Mật khẩu đã được đặt lại', token: authToken });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// =======================
+//  QUÊN MẬT KHẨU BẰNG OTP
+// =======================
+
+// POST /api/auth/forgot-otp
+// Gửi mã OTP 6 chữ số về email. Nếu email không tồn tại vẫn trả về success (tránh lộ thông tin).
+router.post('/forgot-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Thiếu email' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    // Để tránh lộ thông tin tài khoản tồn tại hay không, luôn trả về success
+    if (!user) {
+      return res.json({
+        success: true,
+        message: 'Nếu email tồn tại, mã xác nhận đã được gửi.'
+      });
+    }
+
+    // Tạo mã OTP 6 số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash OTP để lưu trong DB (tránh lưu plain-text)
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+    user.resetPasswordToken = otpHash;
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // Hết hạn sau 10 phút
+    await user.save();
+
+    const transporter = createTransporter();
+    const mailOptions = {
+      to: user.email,
+      from: process.env.EMAIL_FROM || (process.env.SMTP_USER || 'no-reply@example.com'),
+      subject: 'Mã xác nhận đặt lại mật khẩu',
+      text:
+        `Mã xác nhận đặt lại mật khẩu của bạn là: ${otp}\n\n` +
+        `Mã có hiệu lực trong 10 phút. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.`
+    };
+
+    if (transporter) {
+      transporter.sendMail(mailOptions, (err) => {
+        if (err) {
+          console.error('Error sending OTP email', err);
+          return res
+            .status(500)
+            .json({ success: false, message: 'Không thể gửi email mã xác nhận' });
+        }
+        return res.json({
+          success: true,
+          message: 'Nếu email tồn tại, mã xác nhận đã được gửi. Vui lòng kiểm tra hộp thư.'
+        });
+      });
+    } else {
+      // Không cấu hình SMTP: chỉ log OTP ở server để dev debug, KHÔNG trả mã về cho client
+      console.warn('SMTP not configured. OTP code (dev only):', otp);
+      return res.json({
+        success: true,
+        message: 'Nếu email tồn tại, mã xác nhận đã được tạo (SMTP chưa cấu hình, xem log server).'
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// POST /api/auth/reset-with-otp
+// Body: { email, otp, password, confirmPassword }
+// Nếu OTP đúng và còn hạn -> cho phép đổi mật khẩu
+router.post('/reset-with-otp', async (req, res) => {
+  try {
+    const { email, otp, password, confirmPassword } = req.body;
+
+    if (!email || !otp || !password || !confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Thiếu tham số' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({
+      email: normalizedEmail,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user || !user.resetPasswordToken) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Mã xác nhận không hợp lệ hoặc đã hết hạn' });
+    }
+
+    // So sánh OTP (hash)
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    if (otpHash !== user.resetPasswordToken) {
+      return res.status(400).json({ success: false, message: 'Mã xác nhận không đúng' });
+    }
+
+    // OTP hợp lệ -> cập nhật mật khẩu mới
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    // Có thể đăng nhập luôn sau khi đổi mật khẩu
+    const authToken = signToken(user._id.toString());
+
+    return res.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công',
+      token: authToken
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
