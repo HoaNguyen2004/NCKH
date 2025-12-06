@@ -289,6 +289,118 @@ router.get('/me', requireAuth, async (req, res) => {
   return res.json({ success: true, user: req.user });
 });
 
+// PUT /api/auth/update-profile
+// Cập nhật thông tin cá nhân (name, phone, company, location)
+router.put('/update-profile', requireAuth, async (req, res) => {
+  try {
+    const { name, phone, company, location } = req.body;
+    
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Tên không được để trống' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    // Cập nhật các trường
+    user.fullName = name.trim();
+    
+    // Cập nhật phone nếu có thay đổi
+    if (phone !== undefined) {
+      const normalizedPhone = phone ? phone.replace(/[\s\-\.]/g, '').trim() : '';
+      // Kiểm tra số điện thoại đã tồn tại chưa (nếu khác số hiện tại)
+      if (normalizedPhone && normalizedPhone !== user.phone) {
+        const phoneExisted = await User.findOne({ 
+          phone: normalizedPhone, 
+          _id: { $ne: user._id } 
+        });
+        if (phoneExisted) {
+          return res.status(409).json({
+            success: false,
+            message: 'Số điện thoại này đã được sử dụng bởi tài khoản khác'
+          });
+        }
+      }
+      user.phone = normalizedPhone;
+    }
+    
+    // Cập nhật company nếu có
+    if (company !== undefined) {
+      user.company = company.trim();
+    }
+    
+    // Cập nhật location nếu có
+    if (location !== undefined) {
+      user.location = location.trim();
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Cập nhật thông tin thành công',
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        company: user.company,
+        location: user.location,
+        role: user.role,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
+// PUT /api/auth/change-password
+// Đổi mật khẩu (yêu cầu nhập mật khẩu hiện tại)
+router.put('/change-password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu xác nhận không khớp' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    // Kiểm tra mật khẩu hiện tại
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không đúng' });
+    }
+
+    // Cập nhật mật khẩu mới
+    user.password = newPassword;
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công'
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+  }
+});
+
 // POST /api/auth/forgot
 router.post('/forgot', async (req, res) => {
   try {

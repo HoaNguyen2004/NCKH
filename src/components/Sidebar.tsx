@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { 
   Home, Users, FileText, ShoppingCart, UserCheck, MessageSquare, 
-  BarChart3, Brain, Link, LogOut, Search 
+  BarChart3, Brain, Link, LogOut, Search, User 
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
+import { AccountDialog } from './dialogs/AccountDialog';
 
 interface SidebarProps {
   currentPage: string;
@@ -16,6 +18,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentPage, onPageChange, onLogout, userRole = 'admin' }: SidebarProps) {
   const { t } = useLanguage();
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   
   // Define menu items based on user role
   const getMenuItems = () => {
@@ -109,12 +112,27 @@ export function Sidebar({ currentPage, onPageChange, onLogout, userRole = 'admin
         <Button
           variant="ghost"
           className="w-full justify-start text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+          onClick={() => setAccountDialogOpen(true)}
+        >
+          <User className="mr-3 h-5 w-5" />
+          {t('account.button')}
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-gray-700 hover:text-gray-900 hover:bg-gray-100"
           onClick={onLogout}
         >
           <LogOut className="mr-3 h-5 w-5" />
           {t('auth.logout')}
         </Button>
       </div>
+
+      {/* Account Dialog */}
+      <AccountDialog 
+        open={accountDialogOpen} 
+        onOpenChange={setAccountDialogOpen}
+        userRole={userRole}
+      />
     </aside>
   );
 }
