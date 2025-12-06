@@ -1,13 +1,14 @@
 /**
  * Gemini AI Service
  * Sử dụng Gemini để phân tích bài viết: loại (mua/bán), đoán giá, độ tin cậy
+ * Hỗ trợ tách nhiều sản phẩm từ 1 bài đăng
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// API Key và Model
-const GEMINI_API_KEY = 'Yourkey';
-const MODEL_NAME = 'gemini-2.0-flash-lite';
+// API Key và Model - Nên dùng env variable
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'Yourkey';
+const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite';
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
@@ -225,10 +226,260 @@ Trả về JSON array chứa INDEX của các bài THỰC SỰ mua bán liên qu
   }
 }
 
+/**
+ * PHÂN TÍCH NÂNG CAO: Tách nhiều sản phẩm từ 1 bài đăng
+ * Mỗi bài đăng có thể chứa nhiều mặt hàng khác nhau
+ * @param {Object} post - Bài đăng { fullText, title, author, url, location, ... }
+ * @param {string} keyword - Từ khóa tìm kiếm
+ * @returns {Object} - { originalPost, products: [...], buyerInfo, sellerInfo }
+ */
+async function analyzePostAdvanced(post, keyword = '') {
+  try {
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const content = post.fullText || post.content || post.title || '';
+
+    const prompt = `Phân tích bài đăng mua bán sau và TÁCH RIÊNG từng sản phẩm nếu có nhiều mặt hàng.
+
+BÀI ĐĂNG:
+"${content.substring(0, 1500)}"
+
+NGƯỜI ĐĂNG: ${post.author || 'Không rõ'}
+ĐỊA ĐIỂM: ${post.location || 'Không rõ'}
+TỪ KHÓA TÌM KIẾM: ${keyword || 'không có'}
+
+YÊU CẦU PHÂN TÍCH:
+1. Xác định đây là bài MUỐN MUA hay MUỐN BÁN
+2. TÁCH RIÊNG từng sản phẩm nếu bài có nhiều mặt hàng (ví dụ: "Bán iPhone 12 và Macbook Air" -> 2 sản phẩm)
+3. Với mỗi sản phẩm, trích xuất: tên, giá, tình trạng, mô tả
+4. Nếu là bài MUA -> trích xuất thông tin người mua (khách hàng tiềm năng)
+5. Nếu là bài BÁN -> trích xuất thông tin người bán
+
+CHỈ trả về JSON theo format sau, không giải thích:
+{
+  "postType": "Buying" hoặc "Selling" hoặc "Unknown",
+  "confidence": 0-100,
+  "products": [
+    {
+      "name": "Tên sản phẩm",
+      "category": "Danh mục (Điện thoại/Laptop/Xe máy/Ô tô/Đồ điện tử/Thời trang/Bất động sản/Khác)",
+      "price": số tiền VNĐ (0 nếu không rõ),
+      "priceText": "giá gốc trong bài (nếu có)",
+      "condition": "Mới/Đã sử dụng/Không rõ",
+      "description": "Mô tả ngắn về sản phẩm",
+      "brand": "Thương hiệu (nếu có)"
+    }
+  ],
+  "buyerInfo": {
+    "name": "Tên người mua (nếu là bài mua)",
+    "budget": "Ngân sách dự kiến",
+    "urgency": "high/medium/low",
+    "requirements": "Yêu cầu cụ thể"
+  },
+  "sellerInfo": {
+    "name": "Tên người bán (nếu là bài bán)",
+    "negotiable": true/false,
+    "warranty": "Thông tin bảo hành (nếu có)"
+  },
+  "contactInfo": {
+    "phone": "Số điện thoại (nếu có trong bài)",
+    "zalo": "Zalo (nếu có)",
+    "messenger": "Link messenger (nếu có)"
+  }
+}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    // Parse JSON từ response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        postType: parsed.postType || 'Unknown',
+        confidence: Math.min(100, Math.max(0, parseInt(parsed.confidence) || 50)),
+        products: Array.isArray(parsed.products) ? parsed.products.map(p => ({
+          name: p.name || 'Sản phẩm không xác định',
+          category: p.category || 'Khác',
+          price: parseInt(p.price) || 0,
+          priceText: p.priceText || '',
+          condition: p.condition || 'Không rõ',
+          description: p.description || '',
+          brand: p.brand || ''
+        })) : [],
+        buyerInfo: parsed.buyerInfo || null,
+        sellerInfo: parsed.sellerInfo || null,
+        contactInfo: parsed.contactInfo || null
+      };
+    }
+    
+    throw new Error('Invalid JSON response');
+  } catch (error) {
+    console.error('Gemini advanced analyze error:', error.message);
+    // Fallback
+    return fallbackAdvancedAnalysis(post, keyword);
+  }
+}
+
+/**
+ * Phân tích nâng cao hàng loạt
+ * @param {Array} posts - Mảng bài viết
+ * @returns {Array} - Mảng kết quả phân tích nâng cao
+ */
+async function analyzePostsAdvanced(posts) {
+  try {
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    
+    // Giới hạn 10 bài mỗi lần để tránh quá tải và đảm bảo chất lượng
+    const postsToAnalyze = posts.slice(0, 10);
+    
+    const postList = postsToAnalyze.map((p, i) => 
+      `[${i}] Người đăng: ${p.author || 'Unknown'}\nNội dung: "${(p.fullText || p.content || '').substring(0, 400)}..."\nĐịa điểm: ${p.location || 'Không rõ'}`
+    ).join('\n\n---\n\n');
+
+    const prompt = `Phân tích các bài đăng mua bán sau. Với mỗi bài, TÁCH RIÊNG từng sản phẩm nếu có nhiều mặt hàng.
+
+DANH SÁCH BÀI ĐĂNG:
+${postList}
+
+Với mỗi bài, xác định:
+1. postType: "Buying" (muốn mua) hoặc "Selling" (muốn bán) hoặc "Unknown"
+2. confidence: độ tin cậy 0-100
+3. products: mảng các sản phẩm được tách ra, mỗi sản phẩm gồm { name, category, price, condition, description }
+4. buyerInfo: nếu là bài mua { name, budget, urgency, requirements }
+5. contactInfo: { phone, zalo } nếu có trong bài
+
+CHỈ trả về JSON array theo thứ tự bài đăng, không giải thích:
+[
+  {
+    "postType": "...",
+    "confidence": ...,
+    "products": [{ "name": "...", "category": "...", "price": ..., "condition": "...", "description": "..." }],
+    "buyerInfo": { "name": "...", "budget": "...", "urgency": "...", "requirements": "..." } hoặc null,
+    "contactInfo": { "phone": "...", "zalo": "..." } hoặc null
+  },
+  ...
+]`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    // Parse JSON array từ response
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Map kết quả về đúng số lượng posts
+      return posts.map((post, i) => {
+        if (i < parsed.length && parsed[i]) {
+          const analysis = parsed[i];
+          return {
+            postType: analysis.postType || 'Unknown',
+            confidence: Math.min(100, Math.max(0, parseInt(analysis.confidence) || 50)),
+            products: Array.isArray(analysis.products) ? analysis.products.map(p => ({
+              name: p.name || 'Sản phẩm không xác định',
+              category: p.category || 'Khác',
+              price: parseInt(p.price) || 0,
+              priceText: p.priceText || '',
+              condition: p.condition || 'Không rõ',
+              description: p.description || '',
+              brand: p.brand || ''
+            })) : [],
+            buyerInfo: analysis.buyerInfo || null,
+            sellerInfo: analysis.sellerInfo || null,
+            contactInfo: analysis.contactInfo || null
+          };
+        }
+        return fallbackAdvancedAnalysis(post, '');
+      });
+    }
+    
+    throw new Error('Invalid JSON array response');
+  } catch (error) {
+    console.error('Gemini batch advanced analyze error:', error.message);
+    // Fallback cho tất cả
+    return posts.map(p => fallbackAdvancedAnalysis(p, ''));
+  }
+}
+
+/**
+ * Fallback phân tích nâng cao khi Gemini lỗi
+ */
+function fallbackAdvancedAnalysis(post, keyword) {
+  const content = post.fullText || post.content || post.title || '';
+  const basicAnalysis = fallbackAnalysis(content);
+  
+  // Tách sản phẩm đơn giản bằng regex
+  const products = [];
+  
+  // Tìm các mẫu giá trong bài
+  const pricePatterns = [
+    /(\d+)\s*(tr|triệu)/gi,
+    /(\d+)\s*(k|nghìn)/gi,
+    /giá\s*:?\s*(\d+)/gi
+  ];
+  
+  // Tạo 1 sản phẩm mặc định từ bài viết
+  products.push({
+    name: keyword || basicAnalysis.category || 'Sản phẩm',
+    category: basicAnalysis.category,
+    price: basicAnalysis.estimatedPrice,
+    priceText: '',
+    condition: 'Không rõ',
+    description: content.substring(0, 200),
+    brand: ''
+  });
+  
+  return {
+    postType: basicAnalysis.type,
+    confidence: basicAnalysis.confidence,
+    products,
+    buyerInfo: basicAnalysis.type === 'Buying' ? {
+      name: post.author || 'Khách hàng',
+      budget: basicAnalysis.estimatedPrice ? `${basicAnalysis.estimatedPrice.toLocaleString()}đ` : '',
+      urgency: 'medium',
+      requirements: ''
+    } : null,
+    sellerInfo: basicAnalysis.type === 'Selling' ? {
+      name: post.author || 'Người bán',
+      negotiable: true,
+      warranty: ''
+    } : null,
+    contactInfo: extractContactInfo(content)
+  };
+}
+
+/**
+ * Trích xuất thông tin liên hệ từ nội dung
+ */
+function extractContactInfo(content) {
+  const info = { phone: '', zalo: '', messenger: '' };
+  
+  // Tìm số điện thoại (10-11 số)
+  const phoneMatch = content.match(/(?:0|\+84|84)[\s.-]?\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3,4}/);
+  if (phoneMatch) {
+    info.phone = phoneMatch[0].replace(/[\s.-]/g, '');
+  }
+  
+  // Tìm Zalo
+  const zaloMatch = content.match(/zalo[\s:]*(?:0|\+84|84)?[\s.-]?\d{9,11}/i);
+  if (zaloMatch) {
+    const nums = zaloMatch[0].match(/\d+/g);
+    if (nums) info.zalo = nums.join('');
+  }
+  
+  return info;
+}
+
 module.exports = {
   analyzePost,
   analyzePosts,
+  analyzePostAdvanced,
+  analyzePostsAdvanced,
   filterRelevantPosts,
-  fallbackAnalysis
+  fallbackAnalysis,
+  fallbackAdvancedAnalysis,
+  extractContactInfo
 };
 

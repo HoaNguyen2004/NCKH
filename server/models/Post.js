@@ -1,6 +1,39 @@
 /* server/models/Post.js */
 const mongoose = require('mongoose');
 
+// Schema cho sản phẩm được tách từ bài đăng
+const extractedProductSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  category: { type: String, default: 'Khác' },
+  price: { type: Number, default: 0 },
+  priceText: { type: String, default: '' },
+  condition: { type: String, enum: ['Mới', 'Đã sử dụng', 'Không rõ'], default: 'Không rõ' },
+  description: { type: String, default: '' },
+  brand: { type: String, default: '' }
+}, { _id: true });
+
+// Schema cho thông tin người mua (khách hàng tiềm năng)
+const buyerInfoSchema = new mongoose.Schema({
+  name: { type: String, default: '' },
+  budget: { type: String, default: '' },
+  urgency: { type: String, enum: ['high', 'medium', 'low'], default: 'medium' },
+  requirements: { type: String, default: '' }
+}, { _id: false });
+
+// Schema cho thông tin người bán
+const sellerInfoSchema = new mongoose.Schema({
+  name: { type: String, default: '' },
+  negotiable: { type: Boolean, default: true },
+  warranty: { type: String, default: '' }
+}, { _id: false });
+
+// Schema cho thông tin liên hệ
+const contactInfoSchema = new mongoose.Schema({
+  phone: { type: String, default: '' },
+  zalo: { type: String, default: '' },
+  messenger: { type: String, default: '' }
+}, { _id: false });
+
 const postSchema = new mongoose.Schema({
   // Nội dung bài viết
   title: {
@@ -83,6 +116,35 @@ const postSchema = new mongoose.Schema({
     type: String,
     index: true
   },
+  
+  // ========== PHẦN MỚI: Sản phẩm được tách từ bài đăng ==========
+  // Danh sách sản phẩm được AI tách ra từ bài đăng
+  extractedProducts: [extractedProductSchema],
+  
+  // Số lượng sản phẩm được tách
+  productCount: {
+    type: Number,
+    default: 0
+  },
+  
+  // Thông tin người mua (nếu là bài mua)
+  buyerInfo: buyerInfoSchema,
+  
+  // Thông tin người bán (nếu là bài bán)
+  sellerInfo: sellerInfoSchema,
+  
+  // Thông tin liên hệ trích xuất từ bài
+  contactInfo: contactInfoSchema,
+  
+  // Đã được AI phân tích nâng cao chưa
+  aiAnalyzed: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Thời gian phân tích AI
+  aiAnalyzedAt: Date,
+  // ========== KẾT THÚC PHẦN MỚI ==========
   
   // Metadata
   scrapedAt: {

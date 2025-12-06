@@ -19,8 +19,10 @@ const {
 
 const {
   analyzePosts,
+  analyzePostsAdvanced,
   filterRelevantPosts,
-  fallbackAnalysis
+  fallbackAnalysis,
+  extractContactInfo
 } = require('../services/geminiService');
 
 // Import models
@@ -77,15 +79,18 @@ router.post('/check-cookie', (req, res) => {
 });
 
 /**
- * Lưu kết quả vào Posts và Leads
+ * Lưu kết quả vào Posts và Leads (PHIÊN BẢN NÂNG CAO)
+ * Hỗ trợ tách nhiều sản phẩm từ 1 bài đăng
  * @param {Array} items - Các bài viết đã phân tích
+ * @param {Array} advancedAnalyses - Kết quả phân tích nâng cao từ Gemini (optional)
  * @param {Object} io - Socket.IO instance (optional)
  * @param {Object} scrapedByInfo - Thông tin người quét { userId, email }
  */
-async function saveResultsToDatabase(items, io = null, scrapedByInfo = null) {
+async function saveResultsToDatabase(items, advancedAnalyses = null, io = null, scrapedByInfo = null) {
   const results = {
     postsAdded: 0,
     leadsAdded: 0,
+    productsExtracted: 0,
     duplicates: 0,
     errors: 0,
     newPosts: [],
@@ -102,7 +107,10 @@ async function saveResultsToDatabase(items, io = null, scrapedByInfo = null) {
     if (p.contentHash) existingHashes.add(p.contentHash);
   });
 
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const advAnalysis = advancedAnalyses ? advancedAnalyses[i] : null;
+    
     try {
       const url = item.url?.split('?')[0];
       const contentHash = createContentHash(item.fullText || item.title);
@@ -113,24 +121,48 @@ async function saveResultsToDatabase(items, io = null, scrapedByInfo = null) {
         continue;
       }
 
-      // Tạo bài viết mới
+      // Xác định type và confidence từ phân tích nâng cao hoặc cơ bản
+      const postType = advAnalysis?.postType || item.type || 'Unknown';
+      const confidence = advAnalysis?.confidence || item.confidence || 50;
+      
+      // Lấy sản phẩm được tách (nếu có)
+      const extractedProducts = advAnalysis?.products || [];
+      const productCount = extractedProducts.length;
+      
+      // Lấy category từ sản phẩm đầu tiên hoặc từ item
+      const mainCategory = extractedProducts[0]?.category || item.category || item.keyword || 'Khác';
+      
+      // Lấy giá từ sản phẩm đầu tiên hoặc từ item
+      const mainPrice = extractedProducts[0]?.price || item.estimatedPrice || 0;
+
+      // Tạo bài viết mới với thông tin nâng cao
       const post = new Post({
         title: item.title || (item.fullText?.substring(0, 80) + '...'),
         fullContent: item.fullText || item.title,
-        type: item.type || 'Unknown',
-        category: item.category || item.keyword || 'Khác',
+        type: postType,
+        category: mainCategory,
         platform: 'Facebook',
         sourceType: item.sourceType || 'group_post',
         url: item.url,
         image: item.image,
-        price: item.estimatedPrice || 0,
+        price: mainPrice,
         priceText: item.price,
         author: item.author || 'Unknown',
         authorId: item.uid,
         location: item.location || 'Việt Nam',
         keyword: item.keyword,
-        confidence: item.confidence || 50,
+        confidence: confidence,
         contentHash,
+        // Thông tin sản phẩm được tách
+        extractedProducts: extractedProducts,
+        productCount: productCount,
+        // Thông tin người mua/bán
+        buyerInfo: advAnalysis?.buyerInfo || null,
+        sellerInfo: advAnalysis?.sellerInfo || null,
+        contactInfo: advAnalysis?.contactInfo || extractContactInfo(item.fullText || ''),
+        // Đánh dấu đã phân tích AI
+        aiAnalyzed: !!advAnalysis,
+        aiAnalyzedAt: advAnalysis ? new Date() : null,
         // Lưu thông tin người quét
         scrapedBy: scrapedByInfo?.userId || null,
         scrapedByEmail: scrapedByInfo?.email || null
@@ -138,34 +170,67 @@ async function saveResultsToDatabase(items, io = null, scrapedByInfo = null) {
 
       await post.save();
       results.postsAdded++;
+      results.productsExtracted += productCount;
       results.newPosts.push(post);
 
       // Thêm vào Set để tránh trùng trong cùng batch
       if (url) existingUrls.add(url);
       if (contentHash) existingHashes.add(contentHash);
 
-      // Nếu là bài MUA -> tạo Lead (khách hàng tiềm năng)
-      if (item.type === 'Buying') {
+      // Nếu là bài MUA -> tạo Lead (khách hàng tiềm năng) CHI TIẾT HƠN
+      if (postType === 'Buying') {
         try {
+          const buyerInfo = advAnalysis?.buyerInfo || {};
+          const contactInfo = advAnalysis?.contactInfo || {};
+          
+          // Tạo danh sách sản phẩm quan tâm từ các sản phẩm được tách
+          const interestProducts = extractedProducts.map(p => p.name).join(', ') || mainCategory;
+          
+          // Tạo mảng sản phẩm quan tâm chi tiết
+          const interestedProductsList = extractedProducts.map(p => ({
+            name: p.name,
+            category: p.category,
+            budget: p.price || 0,
+            condition: p.condition
+          }));
+          
+          // Tính ngân sách từ các sản phẩm
+          const totalBudget = extractedProducts.reduce((sum, p) => sum + (p.price || 0), 0) || mainPrice;
+          
           const lead = new Lead({
-            name: item.author || 'Khách hàng từ Facebook',
-            phone: '', // Không có số điện thoại
-            email: '', // Không có email
+            name: buyerInfo.name || item.author || 'Khách hàng từ Facebook',
+            phone: contactInfo.phone || '',
+            email: '',
+            zalo: contactInfo.zalo || '',
+            messenger: contactInfo.messenger || '',
             location: item.location || 'Việt Nam',
-            interest: item.category || item.keyword || 'Sản phẩm',
+            interest: interestProducts,
+            interestedProducts: interestedProductsList,
             type: 'buyer',
-            budget: item.estimatedPrice ? `${item.estimatedPrice.toLocaleString()}đ` : '',
+            budget: totalBudget ? `${totalBudget.toLocaleString()}đ` : buyerInfo.budget || '',
+            budgetNumber: totalBudget,
             status: 'new',
-            priority: item.confidence >= 70 ? 'high' : item.confidence >= 50 ? 'medium' : 'low',
+            priority: (buyerInfo.urgency === 'high' || confidence >= 70) ? 'high' : 
+                     (buyerInfo.urgency === 'medium' || confidence >= 50) ? 'medium' : 'low',
+            urgency: buyerInfo.urgency || 'medium',
+            requirements: buyerInfo.requirements || '',
             source: 'Facebook Scraper',
-            notes: `Bài viết: ${item.fullText?.substring(0, 200)}...\n\nLink: ${item.url}`,
+            notes: `📝 Yêu cầu: ${buyerInfo.requirements || 'Không rõ'}\n\n` +
+                   `📦 Sản phẩm quan tâm (${productCount} SP): ${interestProducts}\n\n` +
+                   `📱 Liên hệ: ${contactInfo.phone || 'Không có'} | Zalo: ${contactInfo.zalo || 'Không có'}\n\n` +
+                   `📄 Nội dung gốc:\n${item.fullText?.substring(0, 300)}...\n\n` +
+                   `🔗 Link: ${item.url}`,
             postUrl: item.url,
-            postId: post._id
+            postId: post._id,
+            createdBy: scrapedByInfo?.userId || null,
+            createdByEmail: scrapedByInfo?.email || ''
           });
 
           await lead.save();
           results.leadsAdded++;
           results.newLeads.push(lead);
+          
+          console.log(`👤 Created lead for buyer: ${lead.name} - Interest: ${interestProducts} (${productCount} products)`);
         } catch (leadErr) {
           console.error('Save lead error:', leadErr.message);
         }
@@ -200,13 +265,18 @@ async function saveResultsToDatabase(items, io = null, scrapedByInfo = null) {
         category: postObj.category,
         status: postObj.status,
         url: postObj.url,
-        image: postObj.image
+        image: postObj.image,
+        // Thêm thông tin mới
+        productCount: postObj.productCount,
+        extractedProducts: postObj.extractedProducts,
+        buyerInfo: postObj.buyerInfo,
+        contactInfo: postObj.contactInfo
       };
     });
 
     io.to('posts').emit('posts:new', { count: results.newPosts.length, posts: postsData });
     io.emit('posts:new', { count: results.newPosts.length, posts: postsData });
-    console.log(`📡 Emitted ${results.newPosts.length} new posts via socket`);
+    console.log(`📡 Emitted ${results.newPosts.length} new posts via socket (${results.productsExtracted} products extracted)`);
   }
 
   return results;
@@ -277,24 +347,32 @@ module.exports = function(io) {
 
       // Phân tích với Gemini
       let analyzedItems = items;
+      let advancedAnalyses = null;
+      
       if (items.length > 0) {
         try {
           // Lọc bài spam trước
           const filteredItems = await filterRelevantPosts(items, keywords);
           console.log(`🔍 Filtered: ${filteredItems.length}/${items.length} relevant posts`);
 
-          // Phân tích loại mua/bán, giá, độ tin cậy
-          const analyses = await analyzePosts(filteredItems);
+          // PHÂN TÍCH NÂNG CAO: Tách nhiều sản phẩm từ mỗi bài
+          console.log(`🤖 Running advanced analysis (extracting products)...`);
+          advancedAnalyses = await analyzePostsAdvanced(filteredItems);
           
-          analyzedItems = filteredItems.map((item, i) => ({
-            ...item,
-            type: analyses[i]?.type || 'Unknown',
-            estimatedPrice: analyses[i]?.estimatedPrice || 0,
-            confidence: analyses[i]?.confidence || 50,
-            category: analyses[i]?.category || item.keyword || 'Khác'
-          }));
+          // Map kết quả vào items
+          analyzedItems = filteredItems.map((item, i) => {
+            const adv = advancedAnalyses[i];
+            return {
+              ...item,
+              type: adv?.postType || 'Unknown',
+              estimatedPrice: adv?.products?.[0]?.price || 0,
+              confidence: adv?.confidence || 50,
+              category: adv?.products?.[0]?.category || item.keyword || 'Khác'
+            };
+          });
           
-          console.log(`✅ Analyzed ${analyzedItems.length} posts with Gemini`);
+          const totalProducts = advancedAnalyses.reduce((sum, a) => sum + (a?.products?.length || 0), 0);
+          console.log(`✅ Analyzed ${analyzedItems.length} posts, extracted ${totalProducts} products`);
         } catch (geminiErr) {
           console.error('Gemini analysis error:', geminiErr.message);
           // Fallback
@@ -302,12 +380,13 @@ module.exports = function(io) {
             const analysis = fallbackAnalysis(item.fullText || item.title);
             return { ...item, ...analysis };
           });
+          advancedAnalyses = null;
         }
       }
 
-      // Tự động lưu vào database (kèm thông tin người quét)
-      const saveResults = await saveResultsToDatabase(analyzedItems, io, scrapedByInfo);
-      console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads`);
+      // Tự động lưu vào database (kèm thông tin người quét và phân tích nâng cao)
+      const saveResults = await saveResultsToDatabase(analyzedItems, advancedAnalyses, io, scrapedByInfo);
+      console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads, ${saveResults.productsExtracted} products`);
 
       // Lưu file backup
       const fileName = `search_data_${Date.now()}.json`;
@@ -329,8 +408,15 @@ module.exports = function(io) {
         saved: {
           posts: saveResults.postsAdded,
           leads: saveResults.leadsAdded,
+          products: saveResults.productsExtracted,
           duplicates: saveResults.duplicates
-        }
+        },
+        // Thêm thông tin phân tích chi tiết
+        analysis: advancedAnalyses ? {
+          totalProducts: advancedAnalyses.reduce((sum, a) => sum + (a?.products?.length || 0), 0),
+          buyingPosts: advancedAnalyses.filter(a => a?.postType === 'Buying').length,
+          sellingPosts: advancedAnalyses.filter(a => a?.postType === 'Selling').length
+        } : null
       });
 
     } catch (e) {
@@ -382,20 +468,28 @@ module.exports = function(io) {
 
       // Phân tích với Gemini
       let analyzedItems = items;
+      let advancedAnalyses = null;
+      
       if (items.length > 0) {
         try {
-          // Phân tích loại mua/bán, giá, độ tin cậy
-          const analyses = await analyzePosts(items);
+          // PHÂN TÍCH NÂNG CAO: Tách nhiều sản phẩm từ mỗi bài
+          console.log(`🤖 Running advanced analysis (extracting products)...`);
+          advancedAnalyses = await analyzePostsAdvanced(items);
           
-          analyzedItems = items.map((item, i) => ({
-            ...item,
-            type: analyses[i]?.type || 'Unknown',
-            estimatedPrice: analyses[i]?.estimatedPrice || 0,
-            confidence: analyses[i]?.confidence || 50,
-            category: analyses[i]?.category || 'Khác'
-          }));
+          // Map kết quả vào items
+          analyzedItems = items.map((item, i) => {
+            const adv = advancedAnalyses[i];
+            return {
+              ...item,
+              type: adv?.postType || 'Unknown',
+              estimatedPrice: adv?.products?.[0]?.price || 0,
+              confidence: adv?.confidence || 50,
+              category: adv?.products?.[0]?.category || 'Khác'
+            };
+          });
           
-          console.log(`✅ Analyzed ${analyzedItems.length} feed posts with Gemini`);
+          const totalProducts = advancedAnalyses.reduce((sum, a) => sum + (a?.products?.length || 0), 0);
+          console.log(`✅ Analyzed ${analyzedItems.length} feed posts, extracted ${totalProducts} products`);
         } catch (geminiErr) {
           console.error('Gemini analysis error:', geminiErr.message);
           // Fallback
@@ -403,12 +497,13 @@ module.exports = function(io) {
             const analysis = fallbackAnalysis(item.fullText || item.title);
             return { ...item, ...analysis };
           });
+          advancedAnalyses = null;
         }
       }
 
-      // Tự động lưu vào database (kèm thông tin người quét)
-      const saveResults = await saveResultsToDatabase(analyzedItems, io, scrapedByInfo);
-      console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads`);
+      // Tự động lưu vào database (kèm thông tin người quét và phân tích nâng cao)
+      const saveResults = await saveResultsToDatabase(analyzedItems, advancedAnalyses, io, scrapedByInfo);
+      console.log(`💾 Saved: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads, ${saveResults.productsExtracted} products`);
 
       // Lưu file backup
       const fileName = `feed_data_${Date.now()}.json`;
@@ -430,8 +525,15 @@ module.exports = function(io) {
         saved: {
           posts: saveResults.postsAdded,
           leads: saveResults.leadsAdded,
+          products: saveResults.productsExtracted,
           duplicates: saveResults.duplicates
-        }
+        },
+        // Thêm thông tin phân tích chi tiết
+        analysis: advancedAnalyses ? {
+          totalProducts: advancedAnalyses.reduce((sum, a) => sum + (a?.products?.length || 0), 0),
+          buyingPosts: advancedAnalyses.filter(a => a?.postType === 'Buying').length,
+          sellingPosts: advancedAnalyses.filter(a => a?.postType === 'Selling').length
+        } : null
       });
 
     } catch (e) {
