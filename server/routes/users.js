@@ -2,6 +2,7 @@
 const express = require('express');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const Post = require('../models/Post');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -10,11 +11,55 @@ const router = express.Router();
 router.use(requireAuth);
 router.use(requireRole(['admin']));
 
-// GET /api/users - Lấy tất cả người dùng
+// GET /api/users - Lấy tất cả người dùng + số bài đã quét
 router.get('/', async (req, res) => {
   try {
+    // Lấy danh sách người dùng
     const users = await User.find().select('-password');
-    return res.json({ success: true, users });
+
+    // Aggregate đếm số bài theo user đã quét
+    const postCounts = await Post.aggregate([
+      {
+        $group: {
+          _id: { scrapedBy: '$scrapedBy', scrapedByEmail: '$scrapedByEmail' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Map count theo userId và email để dễ tra cứu
+    const countById = new Map();
+    const countByEmail = new Map();
+
+    postCounts.forEach((item) => {
+      const { scrapedBy, scrapedByEmail } = item._id || {};
+      if (scrapedBy) {
+        const key = String(scrapedBy);
+        countById.set(key, (countById.get(key) || 0) + item.count);
+      }
+      if (scrapedByEmail) {
+        const key = scrapedByEmail.toLowerCase();
+        countByEmail.set(key, (countByEmail.get(key) || 0) + item.count);
+      }
+    });
+
+    const usersWithStats = users.map((u) => {
+      const obj = u.toObject();
+      const idKey = String(u._id);
+      const emailKey = (u.email || '').toLowerCase();
+
+      const postsAnalyzed =
+        countById.get(idKey) ||
+        (emailKey ? countByEmail.get(emailKey) : 0) ||
+        0;
+
+      return {
+        ...obj,
+        postsAnalyzed
+      };
+    });
+
+    return res.json({ success: true, users: usersWithStats });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: 'Lỗi máy chủ' });

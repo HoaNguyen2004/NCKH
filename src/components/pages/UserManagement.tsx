@@ -47,58 +47,8 @@ import {
 } from '../ui/select';
 
 export function UserManagement() {
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'Nguyễn Văn A',
-      email: 'nguyenvana@email.com',
-      phone: '0912345678',
-      role: 'Store Manager',
-      status: 'active',
-      lastActive: '2 phút trước',
-      postsAnalyzed: 245
-    },
-    {
-      id: 2,
-      name: 'Trần Thị B',
-      email: 'tranthib@email.com',
-      phone: '0987654321',
-      role: 'Sales Staff',
-      status: 'active',
-      lastActive: '10 phút trước',
-      postsAnalyzed: 189
-    },
-    {
-      id: 3,
-      name: 'Lê Văn C',
-      email: 'levanc@email.com',
-      phone: '0909123456',
-      role: 'Sales Staff',
-      status: 'active',
-      lastActive: '1 giờ trước',
-      postsAnalyzed: 312
-    },
-    {
-      id: 4,
-      name: 'Phạm Thị D',
-      email: 'phamthid@email.com',
-      phone: '0938765432',
-      role: 'SMB Owner',
-      status: 'inactive',
-      lastActive: '2 ngày trước',
-      postsAnalyzed: 67
-    },
-    {
-      id: 5,
-      name: 'Hoàng Văn E',
-      email: 'hoangvane@email.com',
-      phone: '0976543210',
-      role: 'Admin',
-      status: 'active',
-      lastActive: '5 phút trước',
-      postsAnalyzed: 521
-    },
-  ]);
+  // Danh sách người dùng sẽ được load từ API
+  const [users, setUsers] = useState<any[]>([]);
 
   const [showDialog, setShowDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -125,7 +75,7 @@ export function UserManagement() {
       const response = await fetch(`${API_BASE_URL}/users`, { headers });
       const data = await response.json();
       if (data.success && data.users) {
-        const formattedUsers = data.users.map((u: any, idx: number) => ({
+        const formattedUsers = data.users.map((u: any) => ({
           id: u._id || u.id,
           _id: u._id,
           name: u.fullName || u.name || 'Không có tên',
@@ -135,7 +85,8 @@ export function UserManagement() {
           permissions: u.permissions || [],
           status: 'active',
           lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Chưa có',
-          postsAnalyzed: idx * 100 + 50
+          // Số bài đã phân tích được lấy trực tiếp từ API
+          postsAnalyzed: typeof u.postsAnalyzed === 'number' ? u.postsAnalyzed : (u.postsAnalyzed || 0)
         }));
         setUsers(formattedUsers);
       }
