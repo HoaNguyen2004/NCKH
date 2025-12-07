@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Search, Play, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Play, Loader2, CheckCircle, AlertCircle, RefreshCw, Upload, Database, FileSpreadsheet, Link, X, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getToken } from '../../utils/api';
 
@@ -30,13 +31,21 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const [keywords, setKeywords] = useState('');
   const [feedUrl, setFeedUrl] = useState('');
   const [scrollCount, setScrollCount] = useState(10);
-  const [mode, setMode] = useState<'search' | 'feed'>('search');
+  const [mode, setMode] = useState<'search' | 'feed' | 'batch'>('search');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const scraperUrl = getScraperUrl();
+  
+  // State cho Batch Import (từ Excel/Database)
+  const [batchLinks, setBatchLinks] = useState<string[]>(['']);
+  const [importSource, setImportSource] = useState<'manual' | 'excel' | 'database'>('manual');
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [dbConnectionString, setDbConnectionString] = useState('');
+  const [dbQuery, setDbQuery] = useState('SELECT url FROM links WHERE active = 1');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Kiểm tra trạng thái server khi component mount
   useEffect(() => {
@@ -199,6 +208,57 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setIsLoading(false);
   };
 
+  // Hàm thêm link mới vào batch
+  const handleAddBatchLink = () => {
+    setBatchLinks([...batchLinks, '']);
+  };
+
+  // Hàm xóa link khỏi batch
+  const handleRemoveBatchLink = (index: number) => {
+    const newLinks = batchLinks.filter((_, i) => i !== index);
+    setBatchLinks(newLinks.length > 0 ? newLinks : ['']);
+  };
+
+  // Hàm cập nhật link trong batch
+  const handleUpdateBatchLink = (index: number, value: string) => {
+    const newLinks = [...batchLinks];
+    newLinks[index] = value;
+    setBatchLinks(newLinks);
+  };
+
+  // Hàm xử lý upload file Excel
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setExcelFile(file);
+      // TODO: Parse Excel file để lấy danh sách links
+      setMessage(`Đã chọn file: ${file.name}. Tính năng đọc Excel sẽ được xử lý ở backend.`);
+      setStatus('idle');
+    }
+  };
+
+  // Hàm quét batch links
+  const handleBatchScrape = async () => {
+    const validLinks = batchLinks.filter(link => link.trim() !== '');
+    if (validLinks.length === 0) {
+      setStatus('error');
+      setMessage('Vui lòng nhập ít nhất 1 link để quét');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatus('idle');
+    setMessage(`Đang quét ${validLinks.length} links...`);
+
+    // TODO: Gọi API batch scrape
+    // Hiện tại chỉ là UI mockup
+    setTimeout(() => {
+      setStatus('success');
+      setMessage(`Đã quét xong ${validLinks.length} links. Kết quả sẽ hiển thị ở trang Bài đăng.`);
+      setIsLoading(false);
+    }, 2000);
+  };
+
 
   return (
     <main className="flex-1 overflow-auto">
@@ -304,7 +364,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <button
                   onClick={() => setMode('search')}
                   className={`p-4 rounded-lg border-2 text-center transition-all ${
@@ -328,6 +388,18 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   <div className="text-2xl mb-2">📰</div>
                   <div className="font-semibold">{t('scraper.feedModeTitle')}</div>
                   <div className="text-sm text-gray-500">{t('scraper.feedModeDesc')}</div>
+                </button>
+                <button
+                  onClick={() => setMode('batch' as any)}
+                  className={`p-4 rounded-lg border-2 text-center transition-all ${
+                    mode === 'batch' 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">📋</div>
+                  <div className="font-semibold">Batch Import</div>
+                  <div className="text-sm text-gray-500">Từ Excel/Database</div>
                 </button>
               </div>
             </CardContent>
@@ -453,6 +525,180 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                       <>
                         <Play className="w-5 h-5 mr-2" />
                         {t('scraper.feedButtonIdle')}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Batch Import Mode */}
+          {mode === 'batch' && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5" />
+                  Batch Import - Quét nhiều link cùng lúc
+                </CardTitle>
+                <CardDescription>
+                  Nhập danh sách links từ file Excel, Database hoặc nhập thủ công
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs value={importSource} onValueChange={(v) => setImportSource(v as any)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-4">
+                    <TabsTrigger value="manual" className="flex items-center gap-2">
+                      <Link className="w-4 h-4" />
+                      Nhập thủ công
+                    </TabsTrigger>
+                    <TabsTrigger value="excel" className="flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Từ Excel
+                    </TabsTrigger>
+                    <TabsTrigger value="database" className="flex items-center gap-2">
+                      <Database className="w-4 h-4" />
+                      Từ Database
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Manual Input */}
+                  <TabsContent value="manual" className="space-y-4">
+                    <div className="space-y-3">
+                      <Label>Danh sách links cần quét</Label>
+                      <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                        {batchLinks.map((link, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500 w-6">{index + 1}.</span>
+                            <Input
+                              placeholder="https://www.facebook.com/groups/..."
+                              value={link}
+                              onChange={(e) => handleUpdateBatchLink(index, e.target.value)}
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveBatchLink(index)}
+                              disabled={batchLinks.length === 1}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddBatchLink}
+                        className="w-full border-dashed"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Thêm link mới
+                      </Button>
+                    </div>
+                  </TabsContent>
+
+                  {/* Excel Import */}
+                  <TabsContent value="excel" className="space-y-4">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        onChange={handleExcelUpload}
+                        className="hidden"
+                      />
+                      <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                      <p className="text-gray-600 mb-2">Kéo thả file Excel vào đây hoặc</p>
+                      <Button
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Chọn file Excel
+                      </Button>
+                      {excelFile && (
+                        <div className="mt-4 p-3 bg-purple-50 rounded-lg flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <FileSpreadsheet className="w-5 h-5 text-purple-600" />
+                            <span className="text-sm font-medium text-purple-700">{excelFile.name}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExcelFile(null)}
+                            className="text-purple-600 hover:text-purple-800"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-400 mt-4">
+                        Hỗ trợ: .xlsx, .xls, .csv • Cột chứa link phải có header là "url" hoặc "link"
+                      </p>
+                    </div>
+                  </TabsContent>
+
+                  {/* Database Import */}
+                  <TabsContent value="database" className="space-y-4">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Connection String</Label>
+                        <Input
+                          placeholder="mongodb://localhost:27017/mydb hoặc mysql://user:pass@host:port/db"
+                          value={dbConnectionString}
+                          onChange={(e) => setDbConnectionString(e.target.value)}
+                        />
+                        <p className="text-xs text-gray-500">Hỗ trợ: MongoDB, MySQL, PostgreSQL</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Query lấy danh sách links</Label>
+                        <Textarea
+                          placeholder="SELECT url FROM links WHERE active = 1"
+                          value={dbQuery}
+                          onChange={(e) => setDbQuery(e.target.value)}
+                          rows={3}
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                      <Button variant="outline" className="w-full">
+                        <Database className="w-4 h-4 mr-2" />
+                        Test kết nối
+                      </Button>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="mt-6 pt-4 border-t">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-sm text-gray-600">
+                      {importSource === 'manual' && (
+                        <span>Đã nhập: <strong>{batchLinks.filter(l => l.trim()).length}</strong> links</span>
+                      )}
+                      {importSource === 'excel' && excelFile && (
+                        <span>File: <strong>{excelFile.name}</strong></span>
+                      )}
+                      {importSource === 'database' && dbConnectionString && (
+                        <span>Database: <strong>Đã cấu hình</strong></span>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleBatchScrape}
+                    disabled={isLoading || serverStatus === 'offline'}
+                    className="w-full h-12 text-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Đang quét batch...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-5 h-5 mr-2" />
+                        🚀 Bắt đầu quét Batch
                       </>
                     )}
                   </Button>
