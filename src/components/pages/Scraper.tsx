@@ -35,6 +35,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [groupLocation, setGroupLocation] = useState<string>('');
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const scraperUrl = getScraperUrl();
 
@@ -144,6 +146,45 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     } catch (err) {
       setStatus('error');
       setMessage('Không thể kết nối đến server');
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleSearchGroups = async () => {
+    if (!email || !keywords) {
+      setStatus('error');
+      setMessage('Vui lòng nhập email và từ khóa');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatus('idle');
+    setMessage('Đang quét danh sách hội nhóm liên quan tới từ khóa...');
+
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${scraperUrl}/scrape-groups`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email, keywordsText: keywords, location: groupLocation })
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        setGroups(data.groups || []);
+        setStatus('success');
+        setMessage(`Tìm thấy ${data.groups?.length || 0} hội nhóm liên quan tới từ khóa`);
+      } else {
+        setStatus('error');
+        setMessage(data.error || 'Lỗi khi quét danh sách hội nhóm');
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage('Không thể kết nối đến server (quét hội nhóm)');
     }
 
     setIsLoading(false);
@@ -363,7 +404,18 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     onChange={(e) => setKeywords(e.target.value)}
                   />
                 </div>
-                <div className="pt-2">
+                <div className="space-y-2">
+                  <Label>Địa điểm (tùy chọn)</Label>
+                  <Input
+                    placeholder="VD: Hà Nội, TP.HCM, Đà Nẵng..."
+                    value={groupLocation}
+                    onChange={(e) => setGroupLocation(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Nếu nhập địa điểm, hệ thống sẽ ưu tiên tìm các nhóm liên quan tới khu vực đó (bằng cách cộng thêm địa điểm vào từ khóa tìm kiếm).
+                  </p>
+                </div>
+                <div className="pt-2 space-y-3">
                   <Button 
                     onClick={handleSearch} 
                     disabled={isLoading || serverStatus === 'offline'}
@@ -380,6 +432,14 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                         {t('scraper.searchButtonIdle')}
                       </>
                     )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleSearchGroups}
+                    disabled={isLoading || serverStatus === 'offline'}
+                    className="w-full"
+                  >
+                    🔍 Quét danh sách hội nhóm theo từ khóa
                   </Button>
                 </div>
               </CardContent>
@@ -461,7 +521,50 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
             </Card>
           )}
 
-          {/* Results */}
+          {/* Group Results */}
+          {groups.length > 0 && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-xl">👥</span>
+                  Danh sách hội nhóm liên quan tới từ khóa ({groups.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {groups.map((group, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {group.name}
+                        </p>
+                        {group.keywords && group.keywords.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Từ khóa: {group.keywords.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      {group.url && (
+                        <a
+                          href={group.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline ml-4 shrink-0"
+                        >
+                          Mở nhóm
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Post Results */}
           {results.length > 0 && (
             <Card className="lg:col-span-2">
               <CardHeader>
