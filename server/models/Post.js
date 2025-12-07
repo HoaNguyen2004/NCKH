@@ -166,6 +166,9 @@ const postSchema = new mongoose.Schema({
     type: String,
     index: true
   }
+  ,
+  // Danh sách user được gán để quản lý phân công bài đăng
+  assignedTo: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }]
 }, {
   timestamps: true // Tự động thêm createdAt, updatedAt
 });

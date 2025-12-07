@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, RefreshCw, UserPlus, Phone, MapPin, DollarSign, FileText, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -76,6 +76,25 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 15;
 
+  // List of users for assignment dropdown
+  const [usersList, setUsersList] = useState<Array<any>>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = getToken();
+        const res = await fetch(`${API_URL}/users`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        const j = await res.json();
+        if (j?.success && j.users) setUsersList(j.users);
+        else if (Array.isArray(j)) setUsersList(j);
+      } catch (err) {
+        console.error('Failed to load users for posts assignment', err);
+      }
+    })();
+  }, []);
+
   // Tính số bài đăng hôm nay
   const todayPostsCount = useMemo(() => {
     const today = new Date().toLocaleDateString('vi-VN');
@@ -152,6 +171,88 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
     });
     setSubmitMessage(null);
     setShowAddLeadDialog(true);
+  };
+
+  // Assign post to a user
+  const handleAssignUser = async (post: any, userId: string | null) => {
+    try {
+      const token = getToken();
+      const id = post._id || post.id;
+      const body = { assignedTo: userId ? [userId] : [] };
+      const res = await fetch(`${API_URL}/posts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(body)
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        console.error('Failed to assign user to post', j);
+        return;
+      }
+      // Refresh list if parent provided the handler
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error assigning user to post', err);
+    }
+  };
+
+  // Archive post (chuyển status thành 'archived')
+  const handleArchive = async (post: any) => {
+    try {
+      const token = getToken();
+      const id = post._id || post.id;
+      const res = await fetch(`${API_URL}/posts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ status: 'archived' })
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        console.error('Failed to archive post', j);
+        alert('Lỗi khi lưu trữ bài đăng: ' + (j.message || 'Unknown error'));
+        return;
+      }
+      // Refresh list if parent provided the handler
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error archiving post', err);
+      alert('Lỗi khi lưu trữ bài đăng');
+    }
+  };
+
+  // Delete post
+  const handleDelete = async (post: any) => {
+    if (!window.confirm('Bạn chắc chắn muốn xóa bài đăng này? Hành động này không thể hoàn tác.')) {
+      return;
+    }
+
+    try {
+      const token = getToken();
+      const id = post._id || post.id;
+      const res = await fetch(`${API_URL}/posts/${id}`, {
+        method: 'DELETE',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        console.error('Failed to delete post', j);
+        alert('Lỗi khi xóa bài đăng: ' + (j.message || 'Unknown error'));
+        return;
+      }
+      // Refresh list if parent provided the handler
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error deleting post', err);
+      alert('Lỗi khi xóa bài đăng');
+    }
   };
 
   // Hàm submit thêm khách hàng tiềm năng
@@ -417,33 +518,61 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                             <div>{post.time}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1 flex-nowrap">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleOpenAddLeadDialog(post)}
-                                title="Thêm vào khách hàng tiềm năng"
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50 flex-shrink-0"
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={(post.assignedTo && post.assignedTo.length > 0) ? (post.assignedTo[0]._id || post.assignedTo[0]) : ''}
+                                onChange={(e) => handleAssignUser(post, e.target.value || null)}
+                                className="text-sm border rounded px-2 py-1 bg-white"
+                                title="Gán người phụ trách"
                               >
-                                <UserPlus className="w-4 h-4" />
-                              </Button>
-                              {post.url && (
+                                <option value="">— Gán cho —</option>
+                                {usersList.map((u) => (
+                                  <option key={u._id || u.id} value={u._id || u.id}>
+                                    {u.fullName || u.name || u.email}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <div className="flex items-center gap-1 flex-nowrap">
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => window.open(post.url, '_blank')}
-                                title={t('posts.viewOriginal')}
-                                  className="flex-shrink-0"
+                                  onClick={() => handleOpenAddLeadDialog(post)}
+                                  title="Thêm vào khách hàng tiềm năng"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50 flex-shrink-0"
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  <UserPlus className="w-4 h-4" />
                                 </Button>
-                              )}
-                              <Button variant="ghost" size="icon" title="Lưu trữ" className="flex-shrink-0">
-                                <Archive className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" title="Xóa" className="flex-shrink-0">
-                                <Trash2 className="w-4 h-4 text-red-600" />
-                              </Button>
+                                {post.url && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => window.open(post.url, '_blank')}
+                                  title={t('posts.viewOriginal')}
+                                    className="flex-shrink-0"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Lưu trữ" 
+                                  className="flex-shrink-0"
+                                  onClick={() => handleArchive(post)}
+                                >
+                                  <Archive className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Xóa" 
+                                  className="flex-shrink-0"
+                                  onClick={() => handleDelete(post)}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>

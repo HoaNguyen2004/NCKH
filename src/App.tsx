@@ -117,6 +117,7 @@ export default function App() {
           const createdAt = post.createdAt ? new Date(post.createdAt) : new Date();
           return {
             id: post._id || post.id,
+            _id: post._id || post.id, // Giữ _id để dùng cho API calls
             content: post.title || post.content || '',
             fullContent: post.fullContent || post.title || post.content || '',
             type: post.type || 'Unknown',
@@ -130,7 +131,8 @@ export default function App() {
             category: post.category || 'Khác',
             status: post.status || 'new',
             url: post.url,
-            image: post.image
+            image: post.image,
+            assignedTo: post.assignedTo || [] // Giữ lại thông tin assignedTo
           };
         });
         setPosts(formattedPosts);

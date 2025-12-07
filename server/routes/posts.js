@@ -51,12 +51,9 @@ module.exports = function(io) {
           const user = await User.findById(payload.userId).select('role email');
           
           if (user && user.role === 'sales') {
-            // Sales chỉ thấy bài của mình
-            filter.$or = [
-              { scrapedBy: user._id },
-              { scrapedByEmail: user.email }
-            ];
-            console.log(`🔒 Sales user ${user.email} - filtering posts by scrapedBy`);
+            // Sales chỉ thấy bài được admin gán (assignedTo) cho họ, không thấy bài khác
+            filter.assignedTo = user._id;
+            console.log(`🔒 Sales user ${user.email} - chỉ thấy bài được gán (assignedTo)`);
           } else if (user) {
             console.log(`👑 ${user.role} user ${user.email} - showing all posts`);
           }
@@ -112,13 +109,9 @@ module.exports = function(io) {
           const user = await User.findById(payload.userId).select('role email');
           
           if (user && user.role === 'sales') {
-            baseFilter = {
-              $or: [
-                { scrapedBy: user._id },
-                { scrapedByEmail: user.email }
-              ]
-            };
-            console.log(`🔒 Sales stats for ${user.email}`);
+            // Sales chỉ thấy stats của bài được admin gán
+            baseFilter = { assignedTo: user._id };
+            console.log(`🔒 Sales stats for ${user.email} - chỉ đếm bài được gán`);
           }
         } catch (authErr) {
           console.log('⚠️ Auth check failed for stats:', authErr.message);
@@ -353,7 +346,25 @@ module.exports = function(io) {
       const { id } = req.params;
       const updates = req.body;
 
-      const post = await Post.findByIdAndUpdate(id, updates, { new: true });
+      // Đảm bảo assignedTo là mảng ObjectId hợp lệ
+      if (updates.assignedTo !== undefined) {
+        if (Array.isArray(updates.assignedTo)) {
+          // Chuyển đổi string IDs thành ObjectId nếu cần
+          updates.assignedTo = updates.assignedTo
+            .filter(id => id) // Loại bỏ null/undefined
+            .map(id => {
+              // Nếu đã là ObjectId thì giữ nguyên, nếu là string thì chuyển đổi
+              return typeof id === 'string' && id.length === 24 
+                ? require('mongoose').Types.ObjectId(id) 
+                : id;
+            });
+        } else if (updates.assignedTo === null || updates.assignedTo === '') {
+          // Nếu gửi null hoặc rỗng thì xóa tất cả assignments
+          updates.assignedTo = [];
+        }
+      }
+
+      const post = await Post.findByIdAndUpdate(id, updates, { new: true }).populate('assignedTo', 'fullName email');
 
       if (!post) {
         return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết' });
@@ -364,6 +375,7 @@ module.exports = function(io) {
 
       res.json({ success: true, post });
     } catch (err) {
+      console.error('Error updating post:', err);
       res.status(500).json({ success: false, message: err.message });
     }
   });
@@ -403,6 +415,62 @@ module.exports = function(io) {
         message: `Đã xóa ${result.deletedCount} bài viết` 
       });
     } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // ==========================================
+  // DELETE /api/posts/cleanup/sales - Xóa bài đăng của sales, giữ lại của admin
+  // ==========================================
+  router.delete('/cleanup/sales', async (req, res) => {
+    try {
+      const User = require('../models/User');
+      
+      // Tìm tất cả user có role = 'sales'
+      const salesUsers = await User.find({ role: 'sales' }).select('_id email');
+      console.log(`🔍 Tìm thấy ${salesUsers.length} sales users`);
+      
+      if (salesUsers.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: 'Không có sales user nào để xóa bài đăng',
+          deletedCount: 0
+        });
+      }
+
+      // Lấy danh sách ID và email của sales users
+      const salesUserIds = salesUsers.map(u => u._id);
+      const salesUserEmails = salesUsers.map(u => u.email.toLowerCase());
+      
+      console.log(`📋 Sales user IDs:`, salesUserIds);
+      console.log(`📋 Sales user emails:`, salesUserEmails);
+
+      // Xóa tất cả bài đăng có scrapedBy hoặc scrapedByEmail thuộc về sales
+      const deleteResult = await Post.deleteMany({
+        $or: [
+          { scrapedBy: { $in: salesUserIds } },
+          { scrapedByEmail: { $in: salesUserEmails } }
+        ]
+      });
+
+      // Đếm số bài đăng còn lại (của admin hoặc không có scrapedBy)
+      const remainingCount = await Post.countDocuments({});
+
+      // Emit socket event để cập nhật real-time
+      io.emit('posts:cleared');
+
+      console.log(`✅ Đã xóa ${deleteResult.deletedCount} bài đăng của sales`);
+      console.log(`📊 Còn lại ${remainingCount} bài đăng (của admin)`);
+
+      res.json({ 
+        success: true, 
+        message: `Đã xóa ${deleteResult.deletedCount} bài đăng của sales. Còn lại ${remainingCount} bài đăng.`,
+        deletedCount: deleteResult.deletedCount,
+        remainingCount: remainingCount,
+        salesUsersCount: salesUsers.length
+      });
+    } catch (err) {
+      console.error('❌ Error deleting sales posts:', err);
       res.status(500).json({ success: false, message: err.message });
     }
   });
