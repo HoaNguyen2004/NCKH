@@ -28,12 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ReportsProps {
   posts: any[];
 }
 
 export function Reports({ posts }: ReportsProps) {
+  const { t } = useLanguage();
   const [exportFormat, setExportFormat] = useState('xlsx');
 
   const stats = {
@@ -47,21 +49,19 @@ export function Reports({ posts }: ReportsProps) {
 
   const handleExportReport = async () => {
     try {
-      // Xuất file trực tiếp (không cần gọi API)
       if (exportFormat === 'xlsx') {
         exportExcel();
       } else if (exportFormat === 'csv') {
         exportCSV();
       }
-      alert('Báo cáo đã được xuất thành công');
+      alert(t('reports.exportSuccess'));
     } catch (err) {
       console.error('Lỗi:', err);
-      alert('Lỗi khi xuất báo cáo');
+      alert(t('reports.exportError'));
     }
   };
 
   const exportExcel = () => {
-    // Tạo dữ liệu cho sheet
     const reportData = [
       ['BÁO CÁO BÁN HÀNG & PHÂN TÍCH'],
       ['Ngày xuất:', new Date().toLocaleString('vi-VN')],
@@ -72,40 +72,18 @@ export function Reports({ posts }: ReportsProps) {
       ['Bài mua', stats.buyingPosts, '+8% so với tháng trước'],
       ['Bài bán', stats.sellingPosts, '+15% so với tháng trước'],
       ['Độ chính xác TB', `${stats.avgConfidence}%`, '+2% so với tháng trước'],
-      [],
-      ['PHÂN BỐ THEO DANH MỤC'],
-      ['Danh mục', 'Số lượng', 'Tỉ lệ (%)'],
-      ['Laptop', 45, 35],
-      ['Phone', 38, 30],
-      ['Furniture', 25, 20],
-      ['Electronics', 20, 15],
-      [],
-      ['PHÂN BỐ THEO ĐỊA ĐIỂM'],
-      ['Địa điểm', 'Số lượng', 'Tỉ lệ (%)'],
-      ['Hà Nội', 52, 40],
-      ['TP.HCM', 39, 30],
-      ['Đà Nẵng', 26, 20],
-      ['Hải Phòng', 13, 10],
-      [],
-      ['THÔNG TIN SẢN PHẨM'],
-      ['Xu hướng giá trung bình', '8.5M VNĐ', '+5.2% so với tháng trước'],
-      ['Tỷ lệ mua/bán', (stats.buyingPosts / stats.sellingPosts || 0).toFixed(2), ''],
-      ['Thời gian phản hồi TB', '2.5 giờ', 'Nhanh hơn 30 phút so với tháng trước'],
     ];
 
-    // Tạo workbook
     const ws = XLSX.utils.aoa_to_sheet(reportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo');
 
-    // Thiết lập độ rộng cột
     ws['!cols'] = [
       { wch: 30 },
       { wch: 15 },
       { wch: 30 }
     ];
 
-    // Xuất file
     const fileName = `bao_cao_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
@@ -122,16 +100,13 @@ export function Reports({ posts }: ReportsProps) {
   const [categoryData, setCategoryData] = useState<Array<{ name: string; count: number; percentage: number }>>([]);
   const [locationData, setLocationData] = useState<Array<{ name: string; count: number; percentage: number }>>([]);
 
-  // Fetch products and leads to build charts dynamically
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // fetch products for categories
         const prodRes = await fetch('http://localhost:5000/api/products');
         const prodJson = await prodRes.json();
         const prods = Array.isArray(prodJson.products) ? prodJson.products : prodJson || [];
 
-        // count by category
         const catCounts: Record<string, number> = {};
         prods.forEach((p: any) => {
           const key = (p.category || 'Unknown').toString();
@@ -139,11 +114,9 @@ export function Reports({ posts }: ReportsProps) {
         });
         const totalCats = Object.values(catCounts).reduce((a, b) => a + b, 0) || 1;
         const cats = Object.entries(catCounts).map(([name, count]) => ({ name, count, percentage: Math.round((count / totalCats) * 100) }));
-        // sort by count desc and keep top 8
         cats.sort((a, b) => b.count - a.count);
         setCategoryData(cats.slice(0, 8));
 
-        // fetch leads for locations
         const leadRes = await fetch('http://localhost:5000/api/leads');
         const leadJson = await leadRes.json();
         const leads = Array.isArray(leadJson.leads) ? leadJson.leads : leadJson || [];
@@ -173,8 +146,8 @@ export function Reports({ posts }: ReportsProps) {
       <header className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-gray-900">Báo cáo & Phân tích</h1>
-            <p className="text-gray-500">Thống kê và xu hướng thị trường</p>
+            <h1 className="text-gray-900">{t('reports.title')}</h1>
+            <p className="text-gray-500">{t('reports.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
             <Select defaultValue="7days">
@@ -182,39 +155,38 @@ export function Reports({ posts }: ReportsProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="7days">7 ngày qua</SelectItem>
-                <SelectItem value="30days">30 ngày qua</SelectItem>
-                <SelectItem value="90days">90 ngày qua</SelectItem>
-                <SelectItem value="custom">Tùy chỉnh</SelectItem>
+                <SelectItem value="7days">{t('reports.range7days')}</SelectItem>
+                <SelectItem value="30days">{t('reports.range30days')}</SelectItem>
+                <SelectItem value="90days">{t('reports.range90days')}</SelectItem>
+                <SelectItem value="custom">{t('reports.rangeCustom')}</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline">
               <Calendar className="w-4 h-4 mr-2" />
-              Chọn ngày
+              {t('reports.pickDate')}
             </Button>
             <Select value={exportFormat} onValueChange={setExportFormat}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="xlsx">Excel</SelectItem>
-                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="xlsx">{t('reports.exportFormatExcel')}</SelectItem>
+                <SelectItem value="csv">{t('reports.exportFormatCsv')}</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={handleExportReport}>
               <Download className="w-4 h-4 mr-2" />
-              Xuất báo cáo
+              {t('reports.exportButton')}
             </Button>
           </div>
         </div>
       </header>
 
       <div className="p-8">
-        {/* Overview Stats */}
         <div className="grid grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle>Tổng bài đăng</CardTitle>
+              <CardTitle>{t('reports.totalPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{stats.totalPosts}</div>
@@ -224,7 +196,7 @@ export function Reports({ posts }: ReportsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Bài mua</CardTitle>
+              <CardTitle>{t('reports.buyingPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{stats.buyingPosts}</div>
@@ -234,7 +206,7 @@ export function Reports({ posts }: ReportsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Bài bán</CardTitle>
+              <CardTitle>{t('reports.sellingPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{stats.sellingPosts}</div>
@@ -244,7 +216,7 @@ export function Reports({ posts }: ReportsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Độ chính xác TB</CardTitle>
+              <CardTitle>{t('reports.avgConfidence')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{stats.avgConfidence}%</div>
@@ -254,11 +226,10 @@ export function Reports({ posts }: ReportsProps) {
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
-          {/* Category Distribution (Pie) */}
           <Card>
             <CardHeader>
-              <CardTitle>Phân bố theo danh mục</CardTitle>
-              <CardDescription>Top danh mục sản phẩm được quan tâm</CardDescription>
+              <CardTitle>{t('reports.categoryDistributionTitle')}</CardTitle>
+              <CardDescription>{t('reports.categoryDistributionDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div style={{ height: 260 }}>
@@ -294,11 +265,10 @@ export function Reports({ posts }: ReportsProps) {
             </CardContent>
           </Card>
 
-          {/* Location Distribution (Bar) */}
           <Card>
             <CardHeader>
-              <CardTitle>Phân bố theo địa điểm</CardTitle>
-              <CardDescription>Khu vực có nhu cầu cao</CardDescription>
+              <CardTitle>{t('reports.locationDistributionTitle')}</CardTitle>
+              <CardDescription>{t('reports.locationDistributionDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div style={{ height: 260 }}>
@@ -316,11 +286,10 @@ export function Reports({ posts }: ReportsProps) {
           </Card>
         </div>
 
-        {/* Trend Analysis */}
         <div className="grid grid-cols-3 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Xu hướng giá trung bình</CardTitle>
+              <CardTitle>{t('reports.avgPriceTrendTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">
@@ -335,7 +304,7 @@ export function Reports({ posts }: ReportsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tỷ lệ mua/bán</CardTitle>
+              <CardTitle>{t('reports.buySellRatioTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">
@@ -353,7 +322,7 @@ export function Reports({ posts }: ReportsProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Thời gian phản hồi TB</CardTitle>
+              <CardTitle>{t('reports.avgResponseTimeTitle')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">

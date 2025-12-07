@@ -36,6 +36,7 @@ import {
 } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
 import { getToken } from '../../utils/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PostsManagementProps {
   posts: any[];
@@ -46,6 +47,7 @@ interface PostsManagementProps {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export function PostsManagement({ posts, socketConnected = false, onRefresh }: PostsManagementProps) {
+  const { t } = useLanguage();
   const [filterType, setFilterType] = useState('all');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,7 +204,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-gray-900 flex items-center gap-2">
-              Quản lý bài đăng
+              {t('posts.title')}
               {/* Real-time status indicator */}
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
                 socketConnected 
@@ -222,7 +224,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                 )}
               </span>
             </h1>
-            <p className="text-gray-500">Xem và quản lý tất cả bài đăng đã thu thập • Cập nhật tự động khi có dữ liệu mới</p>
+            <p className="text-gray-500">{t('posts.subtitle')}</p>
           </div>
           {onRefresh && (
             <Button 
@@ -231,7 +233,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
               title="Làm mới danh sách"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              Làm mới
+              {t('posts.refresh')}
             </Button>
           )}
         </div>
@@ -242,7 +244,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
         <div className="grid grid-cols-5 gap-6 mb-6">
           <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-blue-700">Tổng bài đăng</CardTitle>
+              <CardTitle className="text-sm text-blue-700">{t('posts.totalPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-900">{posts.length}</div>
@@ -251,7 +253,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
 
           <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-green-700">Mua</CardTitle>
+              <CardTitle className="text-sm text-green-700">{t('posts.buying')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-900">
@@ -262,7 +264,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
 
           <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-orange-700">Bán</CardTitle>
+              <CardTitle className="text-sm text-orange-700">{t('posts.selling')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-orange-900">
@@ -284,7 +286,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
 
           <Card className="bg-gradient-to-br from-pink-50 to-rose-50 border-pink-200">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-pink-700">Hôm nay</CardTitle>
+              <CardTitle className="text-sm text-pink-700">{t('posts.today')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-pink-900">{todayPostsCount}</div>
@@ -296,25 +298,25 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Danh sách bài đăng ({filteredPosts.length})</CardTitle>
+              <CardTitle>{t('posts.title')} ({filteredPosts.length})</CardTitle>
               <div className="flex items-center gap-3">
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Loại" />
+                    <SelectValue placeholder={t('posts.type')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="buying">Mua</SelectItem>
-                    <SelectItem value="selling">Bán</SelectItem>
+                    <SelectItem value="all">{t('common.all')}</SelectItem>
+                    <SelectItem value="buying">{t('posts.buying')}</SelectItem>
+                    <SelectItem value="selling">{t('posts.selling')}</SelectItem>
                   </SelectContent>
                 </Select>
 
                 <Select value={filterPlatform} onValueChange={setFilterPlatform}>
                   <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Platform" />
+                    <SelectValue placeholder={t('posts.platform')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="all">{t('common.all')}</SelectItem>
                     <SelectItem value="facebook">Facebook</SelectItem>
                     <SelectItem value="instagram">Instagram</SelectItem>
                     <SelectItem value="twitter">Twitter</SelectItem>
@@ -324,7 +326,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input 
-                    placeholder="Tìm kiếm..." 
+                    placeholder={t('common.search') + '...'} 
                     className="pl-10 w-64" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -337,8 +339,8 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
             {filteredPosts.length === 0 ? (
               <div className="text-center py-12">
                 <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <div className="text-gray-400 mb-2">Không có bài đăng</div>
-                <div className="text-gray-400 text-sm mb-4">Bài đăng sẽ hiển thị ở đây sau khi quét từ trang "Quét dữ liệu"</div>
+                <div className="text-gray-400 mb-2">{t('posts.noPosts')}</div>
+                <div className="text-gray-400 text-sm mb-4">{t('posts.noPostsHint')}</div>
               </div>
             ) : (
               <>
@@ -346,15 +348,15 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                   <Table className="w-full table-auto">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="min-w-[200px] whitespace-nowrap">Nội dung</TableHead>
-                        <TableHead className="whitespace-nowrap">Loại</TableHead>
-                        <TableHead className="whitespace-nowrap">Danh mục</TableHead>
-                        <TableHead className="whitespace-nowrap">Nền tảng</TableHead>
-                        <TableHead className="whitespace-nowrap">Tác giả</TableHead>
-                        <TableHead className="whitespace-nowrap">Giá</TableHead>
-                        <TableHead className="whitespace-nowrap">Độ tin cậy</TableHead>
-                        <TableHead className="whitespace-nowrap">Thời gian</TableHead>
-                        <TableHead className="whitespace-nowrap">Hành động</TableHead>
+                        <TableHead className="min-w-[200px] whitespace-nowrap">{t('posts.table.content')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.type')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.category')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.platform')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.author')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.price')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.confidence')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.time')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('posts.table.actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -372,7 +374,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                                 className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1"
                               >
                                 <ExternalLink className="w-3 h-3" />
-                                Xem bài gốc
+                                {t('posts.viewOriginal')}
                               </a>
                             )}
                           </TableCell>
@@ -430,7 +432,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                                   variant="ghost" 
                                   size="icon"
                                   onClick={() => window.open(post.url, '_blank')}
-                                  title="Xem bài viết gốc"
+                                title={t('posts.viewOriginal')}
                                   className="flex-shrink-0"
                                 >
                                   <Eye className="w-4 h-4" />
@@ -465,7 +467,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                         className="flex items-center gap-1"
                       >
                         <ChevronLeft className="w-4 h-4" />
-                        Trước
+                        {t('posts.pagination.prev')}
                       </Button>
                       <div className="flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-md">
                         <span className="font-medium text-gray-900">{currentPage}</span>
@@ -479,7 +481,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                         disabled={currentPage === totalPages}
                         className="flex items-center gap-1"
                       >
-                        Sau
+                        {t('posts.pagination.next')}
                         <ChevronRight className="w-4 h-4" />
                       </Button>
                     </div>

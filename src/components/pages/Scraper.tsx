@@ -207,7 +207,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{t('sidebar.scraper')}</h1>
-            <p className="text-gray-600">Thu thập dữ liệu từ Facebook Groups và Marketplace</p>
+            <p className="text-gray-600">{t('scraper.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Server Status */}
@@ -221,9 +221,9 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 serverStatus === 'offline' ? 'bg-red-500' :
                 'bg-yellow-500 animate-pulse'
               }`} />
-              {serverStatus === 'online' ? 'Server Online' :
-               serverStatus === 'offline' ? 'Server Offline' :
-               'Đang kiểm tra...'}
+              {serverStatus === 'online' ? t('scraper.serverOnline') :
+               serverStatus === 'offline' ? t('scraper.serverOffline') :
+               t('scraper.serverChecking')}
             </div>
             <Button variant="outline" onClick={checkServerStatus}>
               <RefreshCw className="w-4 h-4" />
@@ -237,8 +237,11 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5" />
               <div>
-                <p className="font-medium">Backend server không hoạt động</p>
-                <p className="text-sm">Hãy chạy backend server trước khi sử dụng tính năng này: <code className="bg-amber-100 px-2 py-1 rounded">cd server && npm start</code></p>
+                <p className="font-medium">{t('scraper.offlineTitle')}</p>
+                <p className="text-sm">
+                  {t('scraper.offlineDesc')}{' '}
+                  <code className="bg-amber-100 px-2 py-1 rounded">cd server && npm start</code>
+                </p>
               </div>
             </div>
           </div>
@@ -264,15 +267,15 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="text-2xl">🔐</span>
-                Bước 1: Đăng nhập Facebook
+                {t('scraper.step1Title')}
               </CardTitle>
               <CardDescription>
-                Đăng nhập để lưu cookie và sử dụng cho việc quét dữ liệu
+                {t('scraper.step1Desc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Facebook</Label>
+                <Label htmlFor="email">{t('scraper.emailLabel')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -287,7 +290,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                Đăng nhập & Lưu Cookie
+                {t('scraper.loginButton')}
               </Button>
             </CardContent>
           </Card>
@@ -297,7 +300,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="text-2xl">⚙️</span>
-                Chọn chế độ quét
+                {t('scraper.modeTitle')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -311,8 +314,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   }`}
                 >
                   <div className="text-2xl mb-2">🔍</div>
-                  <div className="font-semibold">Search Mode</div>
-                  <div className="text-sm text-gray-500">Tìm theo từ khóa</div>
+                  <div className="font-semibold">{t('scraper.searchModeTitle')}</div>
+                  <div className="text-sm text-gray-500">{t('scraper.searchModeDesc')}</div>
                 </button>
                 <button
                   onClick={() => setMode('feed')}
@@ -323,8 +326,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   }`}
                 >
                   <div className="text-2xl mb-2">📰</div>
-                  <div className="font-semibold">Feed Mode</div>
-                  <div className="text-sm text-gray-500">Cào feed + lọc</div>
+                  <div className="font-semibold">{t('scraper.feedModeTitle')}</div>
+                  <div className="text-sm text-gray-500">{t('scraper.feedModeDesc')}</div>
                 </button>
               </div>
             </CardContent>
@@ -336,15 +339,15 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Search className="w-5 h-5" />
-                  Bước 2: Quét theo Search
+                  {t('scraper.step2SearchTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Nhập link Group/Marketplace và từ khóa để tìm kiếm
+                  {t('scraper.step2SearchDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Link Group hoặc Marketplace</Label>
+                  <Label>{t('scraper.groupLinkLabel')}</Label>
                   <Input
                     placeholder="https://www.facebook.com/groups/123456"
                     value={url}
@@ -352,7 +355,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Từ khóa (mỗi dòng 1 từ khóa)</Label>
+                  <Label>{t('scraper.keywordsLabel')}</Label>
                   <Textarea
                     placeholder="iphone 15 pro max&#10;macbook m3&#10;samsung s24"
                     rows={4}
@@ -369,12 +372,12 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     {isLoading ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Đang quét Search...
+                        {t('scraper.searchButtonLoading')}
                       </>
                     ) : (
                       <>
                         <Search className="w-5 h-5 mr-2" />
-                        🔍 Quét Search
+                        {t('scraper.searchButtonIdle')}
                       </>
                     )}
                   </Button>
@@ -389,15 +392,15 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <span className="text-xl">📰</span>
-                  Bước 2: Cào Feed
+                  {t('scraper.step2FeedTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Vào trang feed và cuộn để load tất cả bài viết, AI sẽ tự động phân loại
+                  {t('scraper.step2FeedDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Link Feed</Label>
+                  <Label>{t('scraper.feedLinkLabel')}</Label>
                   <Input
                     placeholder="https://www.facebook.com/groups/123456"
                     value={feedUrl}
@@ -409,19 +412,19 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                       size="sm"
                       onClick={() => setFeedUrl('https://www.facebook.com')}
                     >
-                      🏠 Newsfeed
+                      {t('scraper.newsfeedButton')}
                     </Button>
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => setFeedUrl('https://www.facebook.com/groups/feed')}
                     >
-                      👥 Tất cả Groups
+                      {t('scraper.allGroupsButton')}
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Số lần cuộn trang: {scrollCount}</Label>
+                  <Label>{t('scraper.scrollLabel')}: {scrollCount}</Label>
                   <input
                     type="range"
                     min="5"
@@ -431,8 +434,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     className="w-full"
                   />
                   <div className="flex justify-between text-sm text-gray-500">
-                    <span>5 (Nhanh)</span>
-                    <span>30 (Nhiều)</span>
+                    <span>{t('scraper.scrollMin')}</span>
+                    <span>{t('scraper.scrollMax')}</span>
                   </div>
                 </div>
                 <div className="pt-2">
@@ -444,12 +447,12 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     {isLoading ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Đang quét Feed...
+                        {t('scraper.feedButtonLoading')}
                       </>
                     ) : (
                       <>
                         <Play className="w-5 h-5 mr-2" />
-                        🚀 Quét Feed
+                        {t('scraper.feedButtonIdle')}
                       </>
                     )}
                   </Button>

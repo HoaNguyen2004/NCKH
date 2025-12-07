@@ -34,78 +34,19 @@ import {
   DialogTrigger,
 } from '../ui/dialog';
 import { Label } from '../ui/label';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface LeadsManagementProps {
   posts: any[];
 }
 
 export function LeadsManagement({ posts }: LeadsManagementProps) {
+  const { t } = useLanguage();
   const [filterStatus, setFilterStatus] = useState('all');
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   
-  const [leads, setLeads] = useState([
-    {
-      id: 1,
-      name: 'Nguyễn Minh Tuấn',
-      phone: '0912345678',
-      email: 'minhtuan@email.com',
-      location: 'Hà Nội',
-      interest: 'Laptop Dell',
-      type: 'Buying',
-      budget: '7-10 triệu',
-      status: 'new',
-      priority: 'high',
-      source: 'Facebook',
-      lastContact: 'Chưa liên hệ',
-      notes: 'Cần mua gấp trong tuần này'
-    },
-    {
-      id: 2,
-      name: 'Trần Thu Hà',
-      phone: '0987654321',
-      email: 'thuha@email.com',
-      location: 'TP.HCM',
-      interest: 'iPhone 12',
-      type: 'Selling',
-      budget: '12-15 triệu',
-      status: 'contacted',
-      priority: 'medium',
-      source: 'Facebook',
-      lastContact: '1 giờ trước',
-      notes: 'Máy còn mới 95%, full box'
-    },
-    {
-      id: 3,
-      name: 'Lê Văn Hùng',
-      phone: '0909123456',
-      email: 'vanhung@email.com',
-      location: 'Đà Nẵng',
-      interest: 'MacBook Pro M1',
-      type: 'Buying',
-      budget: '20-25 triệu',
-      status: 'qualified',
-      priority: 'high',
-      source: 'Instagram',
-      lastContact: '2 ngày trước',
-      notes: 'Đã xem máy, đang cân nhắc'
-    },
-    {
-      id: 4,
-      name: 'Phạm Thị Lan',
-      phone: '0938765432',
-      email: 'thilan@email.com',
-      location: 'Hà Nội',
-      interest: 'Samsung Galaxy S21',
-      type: 'Buying',
-      budget: '9-12 triệu',
-      status: 'lost',
-      priority: 'low',
-      source: 'Facebook',
-      lastContact: '1 tuần trước',
-      notes: 'Đã mua từ nguồn khác'
-    },
-  ]);
+  const [leads, setLeads] = useState<any[]>([]);
 
   const [showDialog, setShowDialog] = useState(false);
   const [formData, setFormData] = useState({
@@ -249,13 +190,13 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'new':
-        return 'Mới';
+        return t('leads.status.new');
       case 'contacted':
-        return 'Đã liên hệ';
+        return t('leads.status.contacted');
       case 'qualified':
-        return 'Tiềm năng';
+        return t('leads.status.qualified');
       case 'lost':
-        return 'Thất bại';
+        return t('leads.status.lost');
       default:
         return status;
     }
@@ -283,19 +224,19 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
       <header className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-gray-900">Khách hàng tiềm năng</h1>
-            <p className="text-gray-500">Quản lý và theo dõi khách hàng tiềm năng</p>
+            <h1 className="text-gray-900">{t('leads.title')}</h1>
+            <p className="text-gray-500">{t('leads.subtitle')}</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="w-4 h-4 mr-2" />
-                Thêm khách hàng
+                {t('leads.addLead')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[525px]">
               <DialogHeader>
-                <DialogTitle>Thêm khách hàng tiềm năng</DialogTitle>
+                <DialogTitle>{t('leads.addLead')}</DialogTitle>
                 <DialogDescription>
                   Nhập thông tin khách hàng mới
                 </DialogDescription>
@@ -411,10 +352,10 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowDialog(false)}>
-                  Hủy
+                  {t('common.cancel')}
                 </Button>
                 <Button onClick={handleAddLead}>
-                  Thêm khách hàng
+                  {t('leads.addLead')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -426,7 +367,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
         <div className="grid grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle>Tổng khách hàng</CardTitle>
+              <CardTitle>{t('leads.totalLeads')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{leads.length}</div>
@@ -435,7 +376,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Mới</CardTitle>
+              <CardTitle>{t('leads.new')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -446,7 +387,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tiềm năng cao</CardTitle>
+              <CardTitle>{t('leads.highPotential')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -457,7 +398,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tỷ lệ chuyển đổi</CardTitle>
+              <CardTitle>{t('leads.conversionRate')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">25%</div>
@@ -468,23 +409,23 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Danh sách khách hàng tiềm năng</CardTitle>
+              <CardTitle>{t('leads.title')}</CardTitle>
               <div className="flex items-center gap-3">
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Trạng thái" />
+                    <SelectValue placeholder={t('common.status')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="new">Mới</SelectItem>
-                    <SelectItem value="contacted">Đã liên hệ</SelectItem>
-                    <SelectItem value="qualified">Tiềm năng</SelectItem>
-                    <SelectItem value="lost">Thất bại</SelectItem>
+                    <SelectItem value="all">{t('common.all')}</SelectItem>
+                    <SelectItem value="new">{t('leads.status.new')}</SelectItem>
+                    <SelectItem value="contacted">{t('leads.status.contacted')}</SelectItem>
+                    <SelectItem value="qualified">{t('leads.status.qualified')}</SelectItem>
+                    <SelectItem value="lost">{t('leads.status.lost')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input placeholder="Tìm kiếm..." className="pl-10 w-64" />
+                  <Input placeholder={t('leads.filter.placeholder')} className="pl-10 w-64" />
                 </div>
               </div>
             </div>
@@ -493,16 +434,16 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ưu tiên</TableHead>
-                  <TableHead>Khách hàng</TableHead>
-                  <TableHead>Liên hệ</TableHead>
-                  <TableHead>Quan tâm</TableHead>
-                  <TableHead>Loại</TableHead>
-                  <TableHead>Ngân sách</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Nguồn</TableHead>
-                  <TableHead>Ghi chú</TableHead>
-                  <TableHead>Hành động</TableHead>
+                  <TableHead>{t('leads.table.priority')}</TableHead>
+                  <TableHead>{t('leads.table.lead')}</TableHead>
+                  <TableHead>{t('leads.table.contact')}</TableHead>
+                  <TableHead>{t('leads.table.interest')}</TableHead>
+                  <TableHead>{t('leads.table.type')}</TableHead>
+                  <TableHead>{t('leads.table.budget')}</TableHead>
+                  <TableHead>{t('leads.table.status')}</TableHead>
+                  <TableHead>{t('leads.table.source')}</TableHead>
+                  <TableHead>{t('leads.table.notes')}</TableHead>
+                  <TableHead>{t('leads.table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -535,7 +476,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     <TableCell>{lead.interest}</TableCell>
                     <TableCell>
                       <Badge variant={lead.type === 'Buying' ? 'default' : 'secondary'}>
-                        {lead.type === 'Buying' ? 'Mua' : 'Bán'}
+                        {lead.type === 'Buying' ? t('posts.buying') : t('posts.selling')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-gray-600">{lead.budget}</TableCell>
@@ -551,10 +492,10 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     <TableCell>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => handleEditLead(lead)}>
-                          Sửa
+                          {t('common.edit')}
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleDeleteLead(lead._id)}>
-                          Xóa
+                          {t('common.delete')}
                         </Button>
                       </div>
                     </TableCell>
@@ -565,11 +506,10 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
           </CardContent>
         </Card>
 
-        {/* Edit Lead Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
-              <DialogTitle>Chỉnh sửa khách hàng</DialogTitle>
+              <DialogTitle>{t('common.edit')}</DialogTitle>
               <DialogDescription>
                 Cập nhật thông tin khách hàng
               </DialogDescription>
@@ -685,10 +625,10 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-                Hủy
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleUpdateLead}>
-                Cập nhật
+                {t('common.save')}
               </Button>
             </DialogFooter>
           </DialogContent>

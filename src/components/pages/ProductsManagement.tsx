@@ -34,8 +34,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export function ProductsManagement() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState([
     {
       id: 1,
@@ -267,26 +269,26 @@ export function ProductsManagement() {
       <header className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-gray-900">Quản lý sản phẩm</h1>
-            <p className="text-gray-500">Theo dõi giá và nhu cầu thị trường</p>
+            <h1 className="text-gray-900">{t('products.title')}</h1>
+            <p className="text-gray-500">{t('products.subtitle')}</p>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
-                Thêm sản phẩm theo dõi
+                {t('products.addTrackedProduct')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Thêm sản phẩm theo dõi</DialogTitle>
+                <DialogTitle>{t('products.addTrackedProduct')}</DialogTitle>
                 <DialogDescription>
                   Nhập thông tin sản phẩm cần theo dõi
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Tên sản phẩm</Label>
+                  <Label htmlFor="name">{t('products.product')}</Label>
                   <Input
                     id="name"
                     placeholder="Ví dụ: Laptop Dell Latitude 7490"
@@ -295,7 +297,7 @@ export function ProductsManagement() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="category">Danh mục</Label>
+                  <Label htmlFor="category">{t('products.category')}</Label>
                   <Select value={formData.category} onValueChange={(val) => setFormData({ ...formData, category: val })}>
                     <SelectTrigger id="category">
                       <SelectValue />
@@ -311,7 +313,7 @@ export function ProductsManagement() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="avgPrice">Giá trung bình</Label>
+                    <Label htmlFor="avgPrice">{t('products.avgPrice')}</Label>
                     <Input
                       id="avgPrice"
                       type="number"
@@ -321,7 +323,7 @@ export function ProductsManagement() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="minPrice">Giá thấp nhất</Label>
+                    <Label htmlFor="minPrice">{t('products.minPrice')}</Label>
                     <Input
                       id="minPrice"
                       type="number"
@@ -331,7 +333,7 @@ export function ProductsManagement() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="maxPrice">Giá cao nhất</Label>
+                    <Label htmlFor="maxPrice">{t('products.maxPrice')}</Label>
                     <Input
                       id="maxPrice"
                       type="number"
@@ -342,25 +344,25 @@ export function ProductsManagement() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="demand">Nhu cầu</Label>
+                  <Label htmlFor="demand">{t('products.demand')}</Label>
                   <Select value={formData.demand} onValueChange={(val) => setFormData({ ...formData, demand: val })}>
                     <SelectTrigger id="demand">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="high">Cao</SelectItem>
-                      <SelectItem value="medium">Trung bình</SelectItem>
-                      <SelectItem value="low">Thấp</SelectItem>
+                      <SelectItem value="high">{t('products.high')}</SelectItem>
+                      <SelectItem value="medium">{t('products.medium')}</SelectItem>
+                      <SelectItem value="low">{t('products.low')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowDialog(false)}>
-                  Hủy
+                  {t('common.cancel')}
                 </Button>
                 <Button onClick={handleAddProduct}>
-                  Thêm sản phẩm
+                  {t('products.addProduct')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -372,7 +374,7 @@ export function ProductsManagement() {
         <div className="grid grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle>Tổng sản phẩm</CardTitle>
+              <CardTitle>{t('products.totalProducts')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{products.length}</div>
@@ -381,7 +383,7 @@ export function ProductsManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Nhu cầu cao</CardTitle>
+              <CardTitle>{t('products.highDemand')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -392,7 +394,7 @@ export function ProductsManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tổng bài mua</CardTitle>
+              <CardTitle>{t('products.totalBuyingPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -403,7 +405,7 @@ export function ProductsManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tổng bài bán</CardTitle>
+              <CardTitle>{t('products.totalSellingPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -416,10 +418,10 @@ export function ProductsManagement() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Danh sách sản phẩm</CardTitle>
+              <CardTitle>{t('products.listTitle')}</CardTitle>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input placeholder="Tìm kiếm sản phẩm..." className="pl-10 w-64" />
+                <Input placeholder={t('products.searchPlaceholder')} className="pl-10 w-64" />
               </div>
             </div>
           </CardHeader>
@@ -427,15 +429,15 @@ export function ProductsManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sản phẩm</TableHead>
-                  <TableHead>Danh mục</TableHead>
-                  <TableHead>Giá trung bình</TableHead>
-                  <TableHead>Khoảng giá</TableHead>
-                  <TableHead>Nhu cầu</TableHead>
-                  <TableHead>Bài mua</TableHead>
-                  <TableHead>Bài bán</TableHead>
-                  <TableHead>Xu hướng</TableHead>
-                  <TableHead>Hành động</TableHead>
+                  <TableHead>{t('products.product')}</TableHead>
+                  <TableHead>{t('products.category')}</TableHead>
+                  <TableHead>{t('products.avgPrice')}</TableHead>
+                  <TableHead>{t('products.priceRange')}</TableHead>
+                  <TableHead>{t('products.demand')}</TableHead>
+                  <TableHead>{t('products.totalBuyingPosts')}</TableHead>
+                  <TableHead>{t('products.totalSellingPosts')}</TableHead>
+                  <TableHead>{t('products.trend')}</TableHead>
+                  <TableHead>{t('common.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -478,10 +480,10 @@ export function ProductsManagement() {
                     <TableCell>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => handleEditProduct(product)}>
-                          Sửa
+                          {t('common.edit')}
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleDeleteProduct(product._id)}>
-                          Xóa
+                          {t('common.delete')}
                         </Button>
                       </div>
                     </TableCell>
@@ -496,14 +498,14 @@ export function ProductsManagement() {
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Chỉnh sửa sản phẩm</DialogTitle>
+              <DialogTitle>{t('products.editProduct')}</DialogTitle>
               <DialogDescription>
                 Cập nhật thông tin sản phẩm
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-name">Tên sản phẩm</Label>
+                <Label htmlFor="edit-name">{t('products.product')}</Label>
                 <Input
                   id="edit-name"
                   placeholder="Ví dụ: Laptop Dell Latitude 7490"
@@ -512,7 +514,7 @@ export function ProductsManagement() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-category">Danh mục</Label>
+                <Label htmlFor="edit-category">{t('products.category')}</Label>
                 <Select value={formData.category} onValueChange={(val) => setFormData({ ...formData, category: val })}>
                   <SelectTrigger id="edit-category">
                     <SelectValue />
@@ -528,7 +530,7 @@ export function ProductsManagement() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-avgPrice">Giá trung bình</Label>
+                  <Label htmlFor="edit-avgPrice">{t('products.avgPrice')}</Label>
                   <Input
                     id="edit-avgPrice"
                     type="number"
@@ -538,7 +540,7 @@ export function ProductsManagement() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-minPrice">Giá thấp nhất</Label>
+                  <Label htmlFor="edit-minPrice">{t('products.minPrice')}</Label>
                   <Input
                     id="edit-minPrice"
                     type="number"
@@ -548,7 +550,7 @@ export function ProductsManagement() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-maxPrice">Giá cao nhất</Label>
+                  <Label htmlFor="edit-maxPrice">{t('products.maxPrice')}</Label>
                   <Input
                     id="edit-maxPrice"
                     type="number"
@@ -559,25 +561,25 @@ export function ProductsManagement() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-demand">Nhu cầu</Label>
+                <Label htmlFor="edit-demand">{t('products.demand')}</Label>
                 <Select value={formData.demand} onValueChange={(val) => setFormData({ ...formData, demand: val })}>
                   <SelectTrigger id="edit-demand">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="medium">Trung bình</SelectItem>
-                    <SelectItem value="low">Thấp</SelectItem>
+                    <SelectItem value="high">{t('products.high')}</SelectItem>
+                    <SelectItem value="medium">{t('products.medium')}</SelectItem>
+                    <SelectItem value="low">{t('products.low')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-                Hủy
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleUpdateProduct}>
-                Cập nhật
+                {t('common.save')}
               </Button>
             </DialogFooter>
           </DialogContent>
