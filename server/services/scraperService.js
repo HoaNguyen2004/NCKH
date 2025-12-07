@@ -754,10 +754,275 @@ async function scrapeFeedByKeywords(email, feedUrl, keywords, scrollCount = 10) 
   return uniqueItems;
 }
 
+/**
+ * Cào danh sách hội nhóm Facebook theo từ khóa
+ * Trả về: { name, url, keyword, keywords[], location? }
+ */
+async function scrapeGroupsByKeywords(email, keywords, location) {
+  const cookiePath = getCookiePath(email);
+  if (!fs.existsSync(cookiePath)) throw new Error("NO_COOKIE");
+
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: [
+      "--start-maximized",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled",
+    ],
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1920, height: 1080 });
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  );
+
+  const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf-8"));
+  await page.setCookie(...cookies);
+
+  const allGroupsMap = new Map();
+
+  const locationText = (location || '').trim();
+
+  for (const kw of keywords) {
+    const query = locationText ? `${kw} ${locationText}` : kw;
+    console.log(`\n🔎 Đang tìm hội nhóm cho từ khóa: "${query}" ...`);
+
+    try {
+      const searchUrl = `https://www.facebook.com/search/groups?q=${encodeURIComponent(
+        query
+      )}`;
+
+      console.log(`   📍 URL: ${searchUrl}`);
+
+      await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60000 });
+
+      if (page.url().includes("login")) throw new Error("COOKIE_INVALID");
+
+      // Nếu có địa điểm, cố gắng set bộ lọc "Tỉnh/Thành phố" trên giao diện Facebook
+      if (locationText) {
+        try {
+          console.log(`   🏙️ Đang áp dụng bộ lọc Tỉnh/Thành phố: "${locationText}"`);
+          await delay(2000);
+
+          // Mở phần filter "Tỉnh/Thành phố"
+          await page.evaluate(() => {
+            function normalize(str) {
+              return (str || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+            }
+
+            const target = normalize('Tỉnh/Thành phố');
+            const elements = Array.from(document.querySelectorAll('span, div'));
+            const btn = elements.find(el => normalize(el.textContent || '') === target);
+            if (btn && btn instanceof HTMLElement) {
+              btn.click();
+            }
+          });
+
+          await delay(1500);
+
+          // Gõ tên thành phố vào input filter (nếu tìm được)
+          await page.evaluate((loc) => {
+            function normalize(str) {
+              return (str || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+            }
+
+            const candidates = Array.from(document.querySelectorAll('input'));
+            const targets = ['tỉnh/thành phố', 'thành phố', 'city'];
+
+            const input = candidates.find((el) => {
+              const placeholder = normalize(el.getAttribute('placeholder') || '');
+              const aria = normalize(el.getAttribute('aria-label') || '');
+              return targets.some(t => placeholder.includes(t) || aria.includes(t));
+            });
+
+            if (input && input instanceof HTMLInputElement) {
+              input.focus();
+              input.value = loc;
+              const inputEvent = new Event('input', { bubbles: true });
+              input.dispatchEvent(inputEvent);
+              const keyEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+              input.dispatchEvent(keyEvent);
+            }
+          }, locationText);
+
+          await delay(2000);
+        } catch (e) {
+          console.warn('   ⚠️ Không áp dụng được filter Tỉnh/Thành phố, tiếp tục dùng từ khóa bình thường.', e.message);
+        }
+      }
+
+      await delay(3000);
+
+      const scrollTimes = 4;
+      console.log(
+        `   ⏳ Đang cuộn trang để load danh sách nhóm (${scrollTimes} lần)...`
+      );
+
+      for (let i = 0; i < scrollTimes; i++) {
+        await page.evaluate(() =>
+          window.scrollBy({ top: 1200, behavior: "smooth" })
+        );
+        console.log(`   ⬇️ Scroll nhóm lần ${i + 1}/${scrollTimes}...`);
+        await delay(2000);
+      }
+
+      const groups = await page.$$eval(
+        'a[href*="/groups/"]',
+        (links, currentKw) => {
+          const results = [];
+          const seen = new Set();
+
+          links.forEach((el) => {
+            const anchor = el;
+            if (!anchor || !anchor.href) return;
+
+            const href = anchor.href;
+            if (!href.includes("/groups/")) return;
+            if (
+              href.includes("/feed") ||
+              href.includes("/discover") ||
+              href.includes("/create")
+            )
+              return;
+
+            const name = (anchor.textContent || "").trim();
+            if (!name || name.length < 3) return;
+
+            let cleanUrl = href.split("?")[0];
+            if (cleanUrl.endsWith("/")) cleanUrl = cleanUrl.slice(0, -1);
+
+            if (seen.has(cleanUrl)) return;
+            seen.add(cleanUrl);
+
+            results.push({
+              name,
+              url: cleanUrl,
+              keyword: currentKw,
+            });
+          });
+
+          return results;
+        },
+        kw
+      );
+
+      console.log(
+        `   ✅ Tìm thấy ${groups.length} nhóm cho từ khóa "${kw}"`
+      );
+
+      groups.forEach((g) => {
+        if (!g.url) return;
+        if (!allGroupsMap.has(g.url)) {
+          allGroupsMap.set(g.url, {
+            ...g,
+            keywords: g.keyword ? [g.keyword] : [],
+          });
+        } else {
+          const existing = allGroupsMap.get(g.url);
+          const keywordsSet = new Set([
+            ...(existing.keywords || []),
+            g.keyword,
+          ].filter(Boolean));
+          existing.keywords = Array.from(keywordsSet);
+          allGroupsMap.set(g.url, existing);
+        }
+      });
+    } catch (err) {
+      console.error(
+        `   ❌ Lỗi khi tìm nhóm cho từ khóa "${kw}":`,
+        err
+      );
+      if (err.message === "COOKIE_INVALID") {
+        await browser.close();
+        throw err;
+      }
+    }
+  }
+
+  await browser.close();
+
+  const groups = Array.from(allGroupsMap.values());
+  console.log(
+    `\n🏁 TỔNG KẾT NHÓM: Tìm được ${groups.length} nhóm duy nhất từ ${
+      keywords.length
+    } từ khóa.`
+  );
+
+  return groups;
+}
+
+/**
+ * Lấy thông tin 1 nhóm từ URL (dùng cho thêm thủ công)
+ */
+async function getGroupInfoByUrl(email, groupUrl) {
+  const cookiePath = getCookiePath(email);
+  if (!fs.existsSync(cookiePath)) throw new Error("NO_COOKIE");
+
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: [
+      "--start-maximized",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled",
+    ],
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1920, height: 1080 });
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  );
+
+  const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf-8"));
+  await page.setCookie(...cookies);
+
+  try {
+    await page.goto(groupUrl, { waitUntil: "networkidle2", timeout: 60000 });
+
+    if (page.url().includes("login")) throw new Error("COOKIE_INVALID");
+
+    await delay(3000);
+
+    const info = await page.evaluate(() => {
+      const result = { name: "", url: window.location.href };
+
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle && ogTitle.getAttribute("content")) {
+        result.name = ogTitle.getAttribute("content");
+        return result;
+      }
+
+      const h1 = document.querySelector("h1");
+      if (h1 && h1.textContent) {
+        result.name = h1.textContent.trim();
+        return result;
+      }
+
+      result.name = document.title || "";
+      return result;
+    });
+
+    return info;
+  } finally {
+    await browser.close();
+  }
+}
+
 module.exports = {
   initLoginAndSaveCookies,
   scrapeWithSearch,
   scrapeFeedByKeywords,
-  getCookiePath
+  getCookiePath,
+  scrapeGroupsByKeywords,
+  getGroupInfoByUrl
 };
 

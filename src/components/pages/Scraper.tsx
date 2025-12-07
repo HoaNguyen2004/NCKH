@@ -28,19 +28,26 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const [email, setEmail] = useState('');
   const [url, setUrl] = useState('');
   const [keywords, setKeywords] = useState('');
-  const [feedUrl, setFeedUrl] = useState('');
-  const [scrollCount, setScrollCount] = useState(10);
+  const [feedUrl, setFeedUrl] = useState(''); // không còn dùng nhưng giữ để tránh breaking cũ
+  const [scrollCount, setScrollCount] = useState(10); // không còn dùng nhưng giữ để tránh breaking cũ
   const [mode, setMode] = useState<'search' | 'feed'>('search');
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [groupLocation, setGroupLocation] = useState<string>('');
+  const [savedGroups, setSavedGroups] = useState<any[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [isLoadingSavedGroups, setIsLoadingSavedGroups] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const scraperUrl = getScraperUrl();
 
-  // Kiểm tra trạng thái server khi component mount
+  // Kiểm tra trạng thái server khi component mount và load danh sách nhóm đã lưu
   useEffect(() => {
     checkServerStatus();
+    loadSavedGroups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scraperUrl]);
 
   const checkServerStatus = async () => {
@@ -62,6 +69,28 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       }
     } catch {
       setServerStatus('offline');
+    }
+  };
+
+  const loadSavedGroups = async () => {
+    setIsLoadingSavedGroups(true);
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${getApiUrl()}/groups`, {
+        headers,
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setSavedGroups(data.groups || []);
+      }
+    } catch (err) {
+      console.error('Không thể tải danh sách nhóm đã lưu:', err);
+    } finally {
+      setIsLoadingSavedGroups(false);
     }
   };
 
@@ -149,51 +178,92 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setIsLoading(false);
   };
 
-  const handleScrapeFeed = async () => {
-    if (!email || !feedUrl) {
+  const handleSearchGroups = async () => {
+    if (!email || !keywords) {
       setStatus('error');
-      setMessage('Vui lòng điền đầy đủ thông tin (email và link feed)');
+      setMessage('Vui lòng nhập email và từ khóa');
       return;
     }
 
     setIsLoading(true);
     setStatus('idle');
-    setMessage('Đang quét feed và phân tích với AI...');
+    setMessage('Đang quét danh sách hội nhóm liên quan tới từ khóa...');
+
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${scraperUrl}/scrape-groups`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email, keywordsText: keywords, location: groupLocation })
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        setGroups(data.groups || []);
+        setStatus('success');
+        setMessage(`Tìm thấy ${data.groups?.length || 0} hội nhóm liên quan tới từ khóa`);
+        // Sau khi quét nhóm, reload danh sách nhóm đã lưu cho feed mode
+        loadSavedGroups();
+      } else {
+        setStatus('error');
+        setMessage(data.error || 'Lỗi khi quét danh sách hội nhóm');
+      }
+    } catch (err) {
+      setStatus('error');
+      setMessage('Không thể kết nối đến server (quét hội nhóm)');
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleScrapeFeed = async () => {
+    if (!email || selectedGroupIds.length === 0) {
+      setStatus('error');
+      setMessage('Vui lòng nhập email và chọn ít nhất 1 nhóm để quét feed');
+      return;
+    }
+
+    setIsLoading(true);
+    setStatus('idle');
+    setMessage('Đang quét feed các nhóm đã chọn và phân tích với AI...');
 
     try {
       const token = getToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       
-      const res = await fetch(`${scraperUrl}/scrape-feed`, {
+      const res = await fetch(`${scraperUrl}/scrape-groups-feed`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ email, feedUrl, scrollCount })
+        body: JSON.stringify({ email, groupIds: selectedGroupIds })
       });
       const data = await res.json();
 
       if (data.ok) {
         setResults(data.matched || []);
         
-        // Hiển thị kết quả đã lưu
         const savedInfo = data.saved 
           ? `\n✅ Đã lưu: ${data.saved.posts} bài đăng, ${data.saved.leads} khách hàng tiềm năng` 
           : '';
         
         setStatus('success');
-        setMessage(`Tìm thấy ${data.matched?.length || 0} bài viết!${savedInfo}`);
+        setMessage(
+          `Tìm thấy ${data.matched?.length || 0} bài viết từ ${selectedGroupIds.length} nhóm đã chọn!${savedInfo}`
+        );
         
-        // Tự động chuyển sang trang bài đăng sau 2 giây
         if (data.saved?.posts > 0 && onNavigateToPosts) {
           setTimeout(() => onNavigateToPosts(), 2500);
         }
       } else {
         setStatus('error');
-        setMessage(data.error || 'Lỗi khi quét feed');
+        setMessage(data.error || 'Lỗi khi quét feed các nhóm');
       }
     } catch (err) {
       setStatus('error');
-      setMessage('Không thể kết nối đến server');
+      setMessage('Không thể kết nối đến server (quét feed nhóm)');
     }
 
     setIsLoading(false);
@@ -363,7 +433,18 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     onChange={(e) => setKeywords(e.target.value)}
                   />
                 </div>
-                <div className="pt-2">
+                <div className="space-y-2">
+                  <Label>Địa điểm (tùy chọn)</Label>
+                  <Input
+                    placeholder="VD: Hà Nội, TP.HCM, Đà Nẵng..."
+                    value={groupLocation}
+                    onChange={(e) => setGroupLocation(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Nếu nhập địa điểm, hệ thống sẽ ưu tiên tìm các nhóm liên quan tới khu vực đó (bằng cách cộng thêm địa điểm vào từ khóa tìm kiếm).
+                  </p>
+                </div>
+                <div className="pt-2 space-y-3">
                   <Button 
                     onClick={handleSearch} 
                     disabled={isLoading || serverStatus === 'offline'}
@@ -381,6 +462,14 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                       </>
                     )}
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleSearchGroups}
+                    disabled={isLoading || serverStatus === 'offline'}
+                    className="w-full"
+                  >
+                    🔍 Quét danh sách hội nhóm theo từ khóa
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -395,53 +484,64 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   {t('scraper.step2FeedTitle')}
                 </CardTitle>
                 <CardDescription>
-                  {t('scraper.step2FeedDesc')}
+                  Chọn các nhóm đã quét để cào feed. Mỗi nhóm sẽ được cuộn 5 lần.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>{t('scraper.feedLinkLabel')}</Label>
-                  <Input
-                    placeholder="https://www.facebook.com/groups/123456"
-                    value={feedUrl}
-                    onChange={(e) => setFeedUrl(e.target.value)}
-                  />
-                  <div className="flex gap-2 mt-2">
-                    <Button 
-                      variant="outline" 
+                  <Label>Danh sách nhóm đã lưu</Label>
+                  {isLoadingSavedGroups ? (
+                    <p className="text-sm text-gray-500">Đang tải danh sách nhóm...</p>
+                  ) : savedGroups.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      Chưa có nhóm nào trong hệ thống. Hãy dùng chức năng "Quét danh sách hội nhóm theo từ khóa" hoặc thêm nhóm thủ công ở trang "Nhóm đã quét".
+                    </p>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto space-y-2 border rounded-lg p-2">
+                      {savedGroups.map((g: any) => {
+                        const checked = selectedGroupIds.includes(g._id);
+                        return (
+                          <label
+                            key={g._id}
+                            className={`flex items-center gap-3 p-2 rounded-md cursor-pointer ${
+                              checked ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={checked}
+                              onChange={(e) => {
+                                setSelectedGroupIds((prev) =>
+                                  e.target.checked ? [...prev, g._id] : prev.filter((id) => id !== g._id)
+                                );
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm text-gray-900 truncate">{g.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{g.url}</p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="flex justify-end mt-2">
+                    <Button
+                      variant="outline"
                       size="sm"
-                      onClick={() => setFeedUrl('https://www.facebook.com')}
+                      onClick={loadSavedGroups}
+                      disabled={isLoadingSavedGroups}
                     >
-                      {t('scraper.newsfeedButton')}
+                      <RefreshCw className="w-3 h-3 mr-1" />
+                      Làm mới danh sách nhóm
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setFeedUrl('https://www.facebook.com/groups/feed')}
-                    >
-                      {t('scraper.allGroupsButton')}
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('scraper.scrollLabel')}: {scrollCount}</Label>
-                  <input
-                    type="range"
-                    min="5"
-                    max="30"
-                    value={scrollCount}
-                    onChange={(e) => setScrollCount(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-gray-500">
-                    <span>{t('scraper.scrollMin')}</span>
-                    <span>{t('scraper.scrollMax')}</span>
                   </div>
                 </div>
                 <div className="pt-2">
                   <Button 
                     onClick={handleScrapeFeed} 
-                    disabled={isLoading || serverStatus === 'offline'}
+                    disabled={isLoading || serverStatus === 'offline' || selectedGroupIds.length === 0}
                     className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
                   >
                     {isLoading ? (
@@ -461,7 +561,50 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
             </Card>
           )}
 
-          {/* Results */}
+          {/* Group Results từ search */}
+          {groups.length > 0 && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-xl">👥</span>
+                  Danh sách hội nhóm liên quan tới từ khóa ({groups.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {groups.map((group, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {group.name}
+                        </p>
+                        {group.keywords && group.keywords.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Từ khóa: {group.keywords.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      {group.url && (
+                        <a
+                          href={group.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline ml-4 shrink-0"
+                        >
+                          Mở nhóm
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Post Results */}
           {results.length > 0 && (
             <Card className="lg:col-span-2">
               <CardHeader>
