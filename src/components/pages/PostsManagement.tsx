@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, RefreshCw, UserPlus, Phone, MapPin, DollarSign, FileText, Tag } from 'lucide-react';
+import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, RefreshCw, UserPlus, Phone, MapPin, DollarSign, FileText, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -70,6 +70,10 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // State cho phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 15;
+
   // Tính số bài đăng hôm nay
   const todayPostsCount = useMemo(() => {
     const today = new Date().toLocaleDateString('vi-VN');
@@ -92,6 +96,30 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
       return typeMatch && platformMatch && searchMatch;
     });
   }, [posts, filterType, filterPlatform, searchQuery]);
+
+  // Tính toán phân trang
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const startIndex = (currentPage - 1) * postsPerPage;
+  const endIndex = startIndex + postsPerPage;
+  const currentPosts = filteredPosts.slice(startIndex, endIndex);
+
+  // Reset về trang 1 khi filter thay đổi
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [filterType, filterPlatform, searchQuery]);
+
+  // Hàm chuyển trang
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   // Hàm trích xuất số điện thoại từ nội dung
   const extractPhoneNumber = (content: string): string => {
@@ -313,112 +341,151 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                 <div className="text-gray-400 text-sm mb-4">Bài đăng sẽ hiển thị ở đây sau khi quét từ trang "Quét dữ liệu"</div>
               </div>
             ) : (
-              <ScrollArea className="h-[500px]">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[250px]">Nội dung</TableHead>
-                      <TableHead>Loại</TableHead>
-                      <TableHead>Danh mục</TableHead>
-                      <TableHead>Nền tảng</TableHead>
-                      <TableHead>Tác giả</TableHead>
-                      <TableHead>Giá</TableHead>
-                      <TableHead>Độ tin cậy</TableHead>
-                      <TableHead>Thời gian</TableHead>
-                      <TableHead>Hành động</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPosts.map((post) => (
-                      <TableRow key={post.id} className="hover:bg-gray-50">
-                        <TableCell className="max-w-[250px]">
-                          <div className="truncate font-medium" title={post.fullContent || post.content}>
-                            {post.content}
-                          </div>
-                          {post.url && (
-                            <a 
-                              href={post.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Xem bài gốc
-                            </a>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={post.type === 'Buying' ? 'default' : 'secondary'}
-                            className={post.type === 'Buying' 
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                              : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                            }
-                          >
-                            {post.type === 'Buying' ? 'Mua' : post.type === 'Selling' ? 'Bán' : 'Khác'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{post.category || 'Khác'}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {post.platform}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-700">{post.author}</TableCell>
-                        <TableCell className="font-medium text-red-600">
-                          {post.price ? `${post.price.toLocaleString()}đ` : '—'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-12 bg-gray-200 h-2 rounded-full overflow-hidden">
-                              <div 
-                                className="bg-green-500 h-full"
-                                style={{ width: typeof post.confidence === 'string' ? post.confidence : `${post.confidence}%` }}
-                              />
+              <>
+                <div className="overflow-x-auto">
+                  <Table className="w-full table-auto">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px] whitespace-nowrap">Nội dung</TableHead>
+                        <TableHead className="whitespace-nowrap">Loại</TableHead>
+                        <TableHead className="whitespace-nowrap">Danh mục</TableHead>
+                        <TableHead className="whitespace-nowrap">Nền tảng</TableHead>
+                        <TableHead className="whitespace-nowrap">Tác giả</TableHead>
+                        <TableHead className="whitespace-nowrap">Giá</TableHead>
+                        <TableHead className="whitespace-nowrap">Độ tin cậy</TableHead>
+                        <TableHead className="whitespace-nowrap">Thời gian</TableHead>
+                        <TableHead className="whitespace-nowrap">Hành động</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentPosts.map((post) => (
+                        <TableRow key={post.id} className="hover:bg-gray-50">
+                          <TableCell className="min-w-[200px] max-w-[300px]">
+                            <div className="truncate font-medium" title={post.fullContent || post.content}>
+                              {post.content}
                             </div>
-                            <span className="text-xs text-gray-600">{post.confidence}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-gray-600 text-xs">
-                          <div>{post.date}</div>
-                          <div>{post.time}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => handleOpenAddLeadDialog(post)}
-                              title="Thêm vào khách hàng tiềm năng"
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                            >
-                              <UserPlus className="w-4 h-4" />
-                            </Button>
                             {post.url && (
+                              <a 
+                                href={post.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Xem bài gốc
+                              </a>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={post.type === 'Buying' ? 'default' : 'secondary'}
+                              className={post.type === 'Buying' 
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                              }
+                            >
+                              {post.type === 'Buying' ? 'Mua' : post.type === 'Selling' ? 'Bán' : 'Khác'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{post.category || 'Khác'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              {post.platform}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-700 whitespace-nowrap">{post.author}</TableCell>
+                          <TableCell className="font-medium text-red-600 whitespace-nowrap">
+                            {post.price ? `${post.price.toLocaleString()}đ` : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-12 bg-gray-200 h-2 rounded-full overflow-hidden flex-shrink-0">
+                                <div 
+                                  className="bg-green-500 h-full"
+                                  style={{ width: typeof post.confidence === 'string' ? post.confidence : `${post.confidence}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-600 whitespace-nowrap">{post.confidence}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-gray-600 text-xs whitespace-nowrap">
+                            <div>{post.date}</div>
+                            <div>{post.time}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 flex-nowrap">
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                onClick={() => window.open(post.url, '_blank')}
-                                title="Xem bài viết gốc"
+                                onClick={() => handleOpenAddLeadDialog(post)}
+                                title="Thêm vào khách hàng tiềm năng"
+                                className="text-green-600 hover:text-green-700 hover:bg-green-50 flex-shrink-0"
                               >
-                                <Eye className="w-4 h-4" />
+                                <UserPlus className="w-4 h-4" />
                               </Button>
-                            )}
-                            <Button variant="ghost" size="icon" title="Lưu trữ">
-                              <Archive className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="Xóa">
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
+                              {post.url && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => window.open(post.url, '_blank')}
+                                  title="Xem bài viết gốc"
+                                  className="flex-shrink-0"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" title="Lưu trữ" className="flex-shrink-0">
+                                <Archive className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" title="Xóa" className="flex-shrink-0">
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Phân trang */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="text-sm text-gray-600">
+                      Hiển thị {startIndex + 1} - {Math.min(endIndex, filteredPosts.length)} trong tổng số {filteredPosts.length} bài đăng
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Trước
+                      </Button>
+                      <div className="flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-md">
+                        <span className="font-medium text-gray-900">{currentPage}</span>
+                        <span className="text-gray-500">/</span>
+                        <span className="text-gray-600">{totalPages}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-1"
+                      >
+                        Sau
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
