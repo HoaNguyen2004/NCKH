@@ -14,7 +14,9 @@ const {
   initLoginAndSaveCookies, 
   scrapeWithSearch, 
   scrapeFeedByKeywords,
-  getCookiePath 
+  getCookiePath,
+  scrapeGroupsByKeywords,
+  getGroupInfoByUrl
 } = require('../services/scraperService');
 
 const {
@@ -28,6 +30,7 @@ const {
 // Import models
 const Post = require('../models/Post');
 const Lead = require('../models/Lead');
+const Group = require('../models/Group');
 
 // Data directory để lưu kết quả
 const DATA_DIR = path.join(__dirname, '..', 'scraper-data');
@@ -305,6 +308,41 @@ async function getUserFromToken(req) {
 
 // Factory function để nhận io
 module.exports = function(io) {
+
+  // Lấy thông tin 1 nhóm từ URL (dùng cho thêm thủ công)
+  router.post('/group-info', async (req, res) => {
+    const { email, url } = req.body;
+
+    if (!email || !url) {
+      return res.json({ ok: false, error: 'Thiếu email hoặc URL nhóm.' });
+    }
+
+    try {
+      let info;
+      try {
+        info = await getGroupInfoByUrl(email, url);
+      } catch (err) {
+        if (err.message === 'NO_COOKIE') {
+          return res.json({ ok: false, error: 'Chưa có cookie login!' });
+        }
+        if (err.message === 'COOKIE_INVALID') {
+          return res.json({ ok: false, error: 'Cookie hết hạn, cần login lại!' });
+        }
+        throw err;
+      }
+
+      return res.json({
+        ok: true,
+        group: {
+          name: info.name,
+          url: info.url || url
+        }
+      });
+    } catch (e) {
+      console.error('Get group info error:', e);
+      return res.json({ ok: false, error: e.message });
+    }
+  });
   
   // Quét theo Search Mode
   router.post('/scrape-filter', async (req, res) => {
@@ -421,6 +459,253 @@ module.exports = function(io) {
 
     } catch (e) {
       console.error('Scrape error:', e);
+      return res.json({ ok: false, error: e.message });
+    }
+  });
+
+  // Quét danh sách hội nhóm liên quan tới từ khóa
+  router.post('/scrape-groups', async (req, res) => {
+    const { email, keywordsText, location } = req.body;
+
+    if (!email || !keywordsText) {
+      return res.json({ ok: false, error: 'Thiếu thông tin (email hoặc từ khóa).' });
+    }
+
+    try {
+      // Lấy thông tin người quét từ token (nếu có)
+      const scrapedByUser = await getUserFromToken(req);
+      const scrapedByInfo = scrapedByUser 
+        ? { userId: scrapedByUser._id, email: scrapedByUser.email }
+        : null;
+
+      if (scrapedByInfo) {
+        console.log(`👥 Group scraping by user: ${scrapedByInfo.email}`);
+      }
+
+      const keywords = keywordsText
+        .split(/\r?\n|,/)
+        .map((x) => x.trim())
+        .filter((x) => x);
+
+      if (!keywords.length) {
+        return res.json({ ok: false, error: 'Nhập ít nhất 1 từ khóa' });
+      }
+
+      let groups;
+      try {
+        groups = await scrapeGroupsByKeywords(email, keywords, location);
+      } catch (err) {
+        if (err.message === 'NO_COOKIE') {
+          return res.json({ ok: false, error: 'Chưa có cookie login!' });
+        }
+        if (err.message === 'COOKIE_INVALID') {
+          return res.json({ ok: false, error: 'Cookie hết hạn, cần login lại!' });
+        }
+        throw err;
+      }
+
+      // Lưu / cập nhật vào MongoDB
+      let inserted = 0;
+      let updated = 0;
+
+      for (const g of groups) {
+        try {
+          const existing = await Group.findOne({ url: g.url });
+          if (!existing) {
+            await Group.create({
+              name: g.name,
+              url: g.url,
+              location: location || '',
+              keywords: g.keywords || (g.keyword ? [g.keyword] : []),
+              scrapedBy: scrapedByInfo?.userId || null,
+              scrapedByEmail: scrapedByInfo?.email || '',
+            });
+            inserted++;
+          } else {
+            const allKeywords = new Set([
+              ...(existing.keywords || []),
+              ...(g.keywords || []),
+              g.keyword,
+            ].filter(Boolean));
+
+            await Group.updateOne(
+              { _id: existing._id },
+              {
+                $set: {
+                  name: g.name || existing.name,
+                  location: location || existing.location,
+                  keywords: Array.from(allKeywords),
+                },
+              }
+            );
+            updated++;
+          }
+        } catch (dbErr) {
+          console.error('Save group error:', dbErr.message);
+        }
+      }
+
+      // Lưu file backup danh sách nhóm
+      const fileName = `groups_data_${Date.now()}.json`;
+      const filePath = path.join(DATA_DIR, fileName);
+      fs.writeFileSync(
+        filePath,
+        JSON.stringify(
+          {
+            keywords,
+            location: location || null,
+            totalGroups: groups.length,
+            scrapedBy: scrapedByInfo?.email || 'unknown',
+          },
+          null,
+          2
+        )
+      );
+
+      return res.json({
+        ok: true,
+        groups,
+        count: groups.length,
+        saved: { inserted, updated },
+        file: fileName,
+      });
+    } catch (e) {
+      console.error('Scrape groups error:', e);
+      return res.json({ ok: false, error: e.message });
+    }
+  });
+
+  // Quét feed lần lượt qua danh sách nhóm đã lưu
+  router.post('/scrape-groups-feed', async (req, res) => {
+    const { email, groupIds } = req.body;
+
+    if (!email || !Array.isArray(groupIds) || groupIds.length === 0) {
+      return res.json({ ok: false, error: 'Thiếu thông tin (email hoặc danh sách nhóm).' });
+    }
+
+    try {
+      const scrapedByUser = await getUserFromToken(req);
+      const scrapedByInfo = scrapedByUser
+        ? { userId: scrapedByUser._id, email: scrapedByUser.email }
+        : null;
+
+      if (scrapedByInfo) {
+        console.log(`👥 Feed scraping by groups for user: ${scrapedByInfo.email}`);
+      }
+
+      const groups = await Group.find({ _id: { $in: groupIds } });
+
+      if (!groups.length) {
+        return res.json({ ok: false, error: 'Không tìm thấy nhóm phù hợp trong hệ thống.' });
+      }
+
+      let allItems = [];
+
+      for (const group of groups) {
+        const feedUrl = group.url;
+        try {
+          console.log(`\n🌐 Đang cào feed của nhóm: ${group.name} (${feedUrl})`);
+          const items = await scrapeFeedByKeywords(
+            email,
+            feedUrl,
+            [], // Không dùng từ khóa lọc
+            5   // Mỗi nhóm cuộn 5 lần
+          );
+          console.log(`   ✅ Nhóm "${group.name}" trả về ${items.length} bài viết`);
+          allItems.push(...items);
+        } catch (err) {
+          console.error(`   ❌ Lỗi khi cào nhóm "${group.name}":`, err);
+          if (err.message === 'NO_COOKIE') {
+            return res.json({ ok: false, error: 'Chưa có cookie login!' });
+          }
+          if (err.message === 'COOKIE_INVALID') {
+            return res.json({ ok: false, error: 'Cookie hết hạn, cần login lại!' });
+          }
+          // Lỗi khác: bỏ qua nhóm và tiếp tục
+        }
+      }
+
+      console.log(`📦 Tổng số bài lấy được từ ${groups.length} nhóm: ${allItems.length}`);
+
+      // Phân tích với Gemini (giống /scrape-feed)
+      let analyzedItems = allItems;
+      let advancedAnalyses = null;
+
+      if (allItems.length > 0) {
+        try {
+          console.log('🤖 Running advanced analysis (extracting products) for group feeds...');
+          advancedAnalyses = await analyzePostsAdvanced(allItems);
+
+          analyzedItems = allItems.map((item, i) => {
+            const adv = advancedAnalyses[i];
+            return {
+              ...item,
+              type: adv?.postType || 'Unknown',
+              estimatedPrice: adv?.products?.[0]?.price || 0,
+              confidence: adv?.confidence || 50,
+              category: adv?.products?.[0]?.category || 'Khác',
+            };
+          });
+
+          const totalProducts = advancedAnalyses.reduce(
+            (sum, a) => sum + (a?.products?.length || 0),
+            0
+          );
+          console.log(
+            `✅ Analyzed ${analyzedItems.length} group-feed posts, extracted ${totalProducts} products`
+          );
+        } catch (geminiErr) {
+          console.error('Gemini analysis error (groups-feed):', geminiErr.message);
+          analyzedItems = allItems.map((item) => {
+            const analysis = fallbackAnalysis(item.fullText || item.title);
+            return { ...item, ...analysis };
+          });
+          advancedAnalyses = null;
+        }
+      }
+
+      const saveResults = await saveResultsToDatabase(
+        analyzedItems,
+        advancedAnalyses,
+        io,
+        scrapedByInfo
+      );
+      console.log(
+        `💾 Saved from groups-feed: ${saveResults.postsAdded} posts, ${saveResults.leadsAdded} leads, ${saveResults.productsExtracted} products`
+      );
+
+      const fileName = `groups_feed_data_${Date.now()}.json`;
+      const filePath = path.join(DATA_DIR, fileName);
+      fs.writeFileSync(
+        filePath,
+        JSON.stringify(
+          {
+            groupIds,
+            total: allItems.length,
+            analyzed: analyzedItems.length,
+            saved: saveResults,
+            scrapedBy: scrapedByInfo?.email || 'unknown',
+          },
+          null,
+          2
+        )
+      );
+
+      return res.json({
+        ok: true,
+        file: fileName,
+        matched: analyzedItems,
+        count: analyzedItems.length,
+        totalScraped: allItems.length,
+        saved: {
+          posts: saveResults.postsAdded,
+          leads: saveResults.leadsAdded,
+          products: saveResults.productsExtracted,
+          duplicates: saveResults.duplicates,
+        },
+      });
+    } catch (e) {
+      console.error('Groups feed scrape error:', e);
       return res.json({ ok: false, error: e.message });
     }
   });

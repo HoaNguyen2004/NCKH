@@ -55,6 +55,7 @@ const translations = {
     'sidebar.users': 'Người dùng',
     'sidebar.posts': 'Bài đăng',
     'sidebar.scraper': 'Quét dữ liệu',
+    'sidebar.groups': 'Nhóm đã quét',
     'sidebar.products': 'Sản phẩm',
     'sidebar.leads': 'Khách hàng tiềm năng',
     'sidebar.conversations': 'Cuộc trò chuyện',
@@ -294,6 +295,19 @@ const translations = {
     'sources.lastSync': 'Đồng bộ lần cuối',
     'sources.syncNow': 'Đồng bộ ngay',
     'sources.disconnect': 'Ngắt kết nối',
+
+    // Groups Page
+    'groups.title': 'Quản lý nhóm Facebook',
+    'groups.subtitle': 'Danh sách các nhóm đã quét và thêm thủ công',
+    'groups.totalGroups': 'Tổng số nhóm',
+    'groups.searchPlaceholder': 'Tìm theo tên, URL hoặc địa điểm...',
+    'groups.name': 'Tên nhóm',
+    'groups.url': 'URL nhóm',
+    'groups.location': 'Địa điểm',
+    'groups.keywords': 'Từ khóa',
+    'groups.addGroup': 'Thêm nhóm thủ công',
+    'groups.fetchName': 'Lấy tên nhóm tự động',
+    'groups.deleteConfirm': 'Bạn có chắc muốn xóa nhóm này?',
     
     // Scraper Page
     'scraper.subtitle': 'Thu thập dữ liệu từ Facebook Groups và Marketplace',
@@ -416,6 +430,7 @@ const translations = {
     'sidebar.users': 'Users',
     'sidebar.posts': 'Posts',
     'sidebar.scraper': 'Data Scraper',
+    'sidebar.groups': 'Groups',
     'sidebar.products': 'Products',
     'sidebar.leads': 'Leads',
     'sidebar.conversations': 'Conversations',
@@ -638,6 +653,19 @@ const translations = {
     'sources.lastSync': 'Last Sync',
     'sources.syncNow': 'Sync Now',
     'sources.disconnect': 'Disconnect',
+
+    // Groups Page
+    'groups.title': 'Facebook Groups',
+    'groups.subtitle': 'List of scraped groups and manually added groups',
+    'groups.totalGroups': 'Total groups',
+    'groups.searchPlaceholder': 'Search by name, URL or location...',
+    'groups.name': 'Group name',
+    'groups.url': 'Group URL',
+    'groups.location': 'Location',
+    'groups.keywords': 'Keywords',
+    'groups.addGroup': 'Add group manually',
+    'groups.fetchName': 'Fetch group name automatically',
+    'groups.deleteConfirm': 'Are you sure you want to delete this group?',
     
     // Scraper Page
     'scraper.subtitle': 'Collect data from Facebook Groups and Marketplace',

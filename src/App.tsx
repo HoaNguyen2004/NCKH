@@ -19,6 +19,7 @@ import { AISettings } from './components/pages/AISettings';
 import { DataSources } from './components/pages/DataSources';
 import { History } from './components/pages/History';
 import { Scraper } from './components/pages/Scraper';
+import { GroupsManagement } from './components/pages/GroupsManagement';
 import { login as apiLogin, register as apiRegister, getToken, fetchPosts as apiFetchPosts } from './utils/api';
 
 // Backend API URL
@@ -546,6 +547,8 @@ export default function App() {
         return <PostsManagement posts={posts} socketConnected={socketConnected} onRefresh={fetchPosts} />;
       case 'scraper':
         return <Scraper onNavigateToPosts={() => setCurrentPage('posts')} />;
+      case 'groups':
+        return <GroupsManagement />;
       case 'products':
         return <ProductsManagement />;
       case 'leads':

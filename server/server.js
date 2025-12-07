@@ -129,6 +129,7 @@ const startServer = async () => {
     // ✅ Resource routes
     app.use('/api/users', require('./routes/users'));
     app.use('/api/products', require('./routes/products'));
+    app.use('/api/groups', require('./routes/groups'));
     app.use('/api/leads', require('./routes/leads'));
     app.use('/api/reports', require('./routes/reports'));
 

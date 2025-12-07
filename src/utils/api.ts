@@ -169,6 +169,39 @@ export async function fetchPostsStats() {
   return json;
 }
 
+// ✅ Nhóm Facebook đã quét
+export async function fetchGroups(params?: { q?: string }) {
+  const token = getToken();
+  const queryParams = new URLSearchParams();
+  if (params?.q) queryParams.append('q', params.q);
+
+  const url = `${API_BASE_URL}/groups${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+
+  const res = await fetch(url, {
+    headers: getHeaders(token || undefined),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json?.message || 'Lấy danh sách nhóm thất bại');
+
+  return json;
+}
+
+export async function createGroup(data: { name: string; url: string; location?: string; keywords?: string[] }) {
+  const token = getToken();
+
+  const res = await fetch(`${API_BASE_URL}/groups`, {
+    method: 'POST',
+    headers: getHeaders(token || undefined),
+    body: JSON.stringify(data),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json?.message || 'Thêm nhóm thất bại');
+
+  return json;
+}
+
 // ✅ Lưu bài đăng mới (kèm thông tin người quét)
 export async function savePosts(items: any[]) {
   const token = getToken();
