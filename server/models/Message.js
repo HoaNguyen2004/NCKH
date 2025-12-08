@@ -13,6 +13,8 @@ const messageSchema = new mongoose.Schema({
     size: { type: Number },
     url: { type: String }
   },
+  platformMessageId: { type: String, default: '' }, // Message ID từ platform
+  platform: { type: String, enum: ['facebook', 'zalo', 'telegram', 'sms', ''], default: '' },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

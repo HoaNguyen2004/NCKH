@@ -32,6 +32,9 @@ const leadSchema = new mongoose.Schema({
   // Thêm các trường mới cho scraper
   postUrl: { type: String, default: '' },
   postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: null },
+  platformUserId: { type: String, default: '' }, // Facebook PSID, Zalo user ID, etc.
+  platform: { type: String, enum: ['facebook', 'zalo', 'telegram', 'sms', ''], default: '' },
+  profilePicture: { type: String, default: '' }, // Profile picture URL from Facebook, Zalo, etc.
   // Người quét/tạo lead
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   createdByEmail: { type: String, default: '' },

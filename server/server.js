@@ -129,7 +129,7 @@ const startServer = async () => {
     // ✅ Resource routes
     app.use('/api/users', require('./routes/users'));
     app.use('/api/products', require('./routes/products'));
-    app.use('/api/groups', require('./routes/groups'));
+    app.use('/api/groups', require('./routes/groups'));   // 👈 từ file thứ 2
     app.use('/api/leads', require('./routes/leads'));
     app.use('/api/reports', require('./routes/reports'));
 
@@ -153,10 +153,15 @@ const startServer = async () => {
     // Mount messages route with io so it can emit events
     app.use('/api/messages', require('./routes/messages')(io));
 
+    // 👇 Mount webhooks route (Facebook Messenger, Zalo, etc.) từ file thứ 1
+    // Make io available globally for webhook handlers
+    global.io = io;
+    app.use('/api/webhooks', require('./routes/webhooks'));
+
     // Socket handlers - chỉ định nghĩa 1 lần
     io.on('connection', (socket) => {
       console.log('📱 Client connected:', socket.id);
-      
+
       // Generic join/leave rooms
       socket.on('join', (room) => {
         try {

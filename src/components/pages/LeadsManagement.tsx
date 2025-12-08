@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Search, Phone, Mail, MapPin, Star } from 'lucide-react';
+import {
+  UserPlus,
+  Search,
+  Phone,
+  Mail,
+  MapPin,
+  Star,
+  MessageSquare,
+} from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -38,14 +46,17 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 interface LeadsManagementProps {
   posts: any[];
+  onNavigate?: (page: string, params?: any) => void;
 }
 
-export function LeadsManagement({ posts }: LeadsManagementProps) {
+export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
   const { t } = useLanguage();
+
   const [filterStatus, setFilterStatus] = useState('all');
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
-  
+  const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
+
   const [leads, setLeads] = useState<any[]>([]);
 
   const [showDialog, setShowDialog] = useState(false);
@@ -59,7 +70,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
     budget: '',
     priority: 'medium',
     source: 'Facebook',
-    notes: ''
+    notes: '',
   });
 
   useEffect(() => {
@@ -88,13 +99,24 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
       const response = await fetch('http://localhost:5000/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
       if (data.success) {
         alert('Thêm khách hàng thành công');
-        setFormData({ name: '', phone: '', email: '', location: '', interest: '', type: 'Buying', budget: '', priority: 'medium', source: 'Facebook', notes: '' });
+        setFormData({
+          name: '',
+          phone: '',
+          email: '',
+          location: '',
+          interest: '',
+          type: 'Buying',
+          budget: '',
+          priority: 'medium',
+          source: 'Facebook',
+          notes: '',
+        });
         setShowDialog(false);
         fetchLeads();
       } else {
@@ -118,7 +140,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
       budget: lead.budget,
       priority: lead.priority,
       source: lead.source,
-      notes: lead.notes
+      notes: lead.notes,
     });
     setShowEditDialog(true);
   };
@@ -130,11 +152,14 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/leads/${editingLeadId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/leads/${editingLeadId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const data = await response.json();
       if (data.success) {
@@ -155,9 +180,12 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
     if (!confirm('Bạn chắc chắn muốn xóa khách hàng này?')) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/leads/${leadId}`, {
-        method: 'DELETE'
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/leads/${leadId}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       const data = await response.json();
       if (data.success) {
@@ -215,9 +243,25 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
     }
   };
 
-  const filteredLeads = filterStatus === 'all' 
-    ? leads 
-    : leads.filter(l => l.status === filterStatus);
+  const handleCopyChatLink = async (leadId: string) => {
+    try {
+      const chatUrl = `${window.location.origin}?leadId=${leadId}`;
+      await navigator.clipboard.writeText(chatUrl);
+      setCopiedLeadId(leadId);
+      setTimeout(() => setCopiedLeadId(null), 2000);
+      alert(
+        `Đã copy link chat: ${chatUrl}\n\nGửi link này cho khách hàng để họ có thể trò chuyện với bạn.`
+      );
+    } catch (err) {
+      console.error('Lỗi khi copy link:', err);
+      alert('Không thể copy link. Vui lòng thử lại.');
+    }
+  };
+
+  const filteredLeads =
+    filterStatus === 'all'
+      ? leads
+      : leads.filter((l) => l.status === filterStatus);
 
   return (
     <main className="flex-1 overflow-auto">
@@ -248,7 +292,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     id="name"
                     placeholder="Ví dụ: Nguyễn Văn A"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -258,7 +304,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                       id="phone"
                       placeholder="0123456789"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
                     />
                   </div>
                   <div className="grid gap-2">
@@ -268,7 +316,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                       type="email"
                       placeholder="khachhang@email.com"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
                     />
                   </div>
                 </div>
@@ -278,7 +328,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     id="location"
                     placeholder="Ví dụ: Hà Nội"
                     value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid gap-2">
@@ -287,13 +339,20 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     id="interest"
                     placeholder="Ví dụ: Laptop Dell"
                     value={formData.interest}
-                    onChange={(e) => setFormData({ ...formData, interest: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, interest: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="grid gap-2">
                     <Label htmlFor="type">Loại</Label>
-                    <Select value={formData.type} onValueChange={(val) => setFormData({ ...formData, type: val })}>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(val) =>
+                        setFormData({ ...formData, type: val })
+                      }
+                    >
                       <SelectTrigger id="type">
                         <SelectValue />
                       </SelectTrigger>
@@ -305,7 +364,12 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="priority">Ưu tiên</Label>
-                    <Select value={formData.priority} onValueChange={(val) => setFormData({ ...formData, priority: val })}>
+                    <Select
+                      value={formData.priority}
+                      onValueChange={(val) =>
+                        setFormData({ ...formData, priority: val })
+                      }
+                    >
                       <SelectTrigger id="priority">
                         <SelectValue />
                       </SelectTrigger>
@@ -323,12 +387,19 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     id="budget"
                     placeholder="Ví dụ: 7-10 triệu"
                     value={formData.budget}
-                    onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, budget: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="source">Nguồn</Label>
-                  <Select value={formData.source} onValueChange={(val) => setFormData({ ...formData, source: val })}>
+                  <Select
+                    value={formData.source}
+                    onValueChange={(val) =>
+                      setFormData({ ...formData, source: val })
+                    }
+                  >
                     <SelectTrigger id="source">
                       <SelectValue />
                     </SelectTrigger>
@@ -346,7 +417,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     id="notes"
                     placeholder="Thông tin thêm..."
                     value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -380,7 +453,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
-                {leads.filter(l => l.status === 'new').length}
+                {leads.filter((l) => l.status === 'new').length}
               </div>
             </CardContent>
           </Card>
@@ -391,7 +464,7 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
-                {leads.filter(l => l.priority === 'high').length}
+                {leads.filter((l) => l.priority === 'high').length}
               </div>
             </CardContent>
           </Card>
@@ -411,21 +484,35 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
             <div className="flex items-center justify-between">
               <CardTitle>{t('leads.title')}</CardTitle>
               <div className="flex items-center gap-3">
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <Select
+                  value={filterStatus}
+                  onValueChange={setFilterStatus}
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder={t('common.status')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('common.all')}</SelectItem>
-                    <SelectItem value="new">{t('leads.status.new')}</SelectItem>
-                    <SelectItem value="contacted">{t('leads.status.contacted')}</SelectItem>
-                    <SelectItem value="qualified">{t('leads.status.qualified')}</SelectItem>
-                    <SelectItem value="lost">{t('leads.status.lost')}</SelectItem>
+                    <SelectItem value="new">
+                      {t('leads.status.new')}
+                    </SelectItem>
+                    <SelectItem value="contacted">
+                      {t('leads.status.contacted')}
+                    </SelectItem>
+                    <SelectItem value="qualified">
+                      {t('leads.status.qualified')}
+                    </SelectItem>
+                    <SelectItem value="lost">
+                      {t('leads.status.lost')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input placeholder={t('leads.filter.placeholder')} className="pl-10 w-64" />
+                  <Input
+                    placeholder={t('leads.filter.placeholder')}
+                    className="pl-10 w-64"
+                  />
                 </div>
               </div>
             </div>
@@ -447,65 +534,133 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeads.map((lead) => (
-                  <TableRow key={lead.id}>
-                    <TableCell>
-                      <Star className={`w-5 h-5 ${getPriorityColor(lead.priority)} fill-current`} />
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-gray-900">{lead.name}</div>
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
-                          <MapPin className="w-3 h-3" />
-                          {lead.location}
+                {filteredLeads.map((lead) => {
+                  const leadId = lead._id || lead.id;
+                  return (
+                    <TableRow key={leadId}>
+                      <TableCell>
+                        <Star
+                          className={`w-5 h-5 ${getPriorityColor(
+                            lead.priority
+                          )} fill-current`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="text-gray-900">{lead.name}</div>
+                          <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <MapPin className="w-3 h-3" />
+                            {lead.location}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone className="w-3 h-3" />
-                          {lead.phone}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Phone className="w-3 h-3" />
+                            {lead.phone}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Mail className="w-3 h-3" />
+                            {lead.email}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Mail className="w-3 h-3" />
-                          {lead.email}
+                      </TableCell>
+                      <TableCell>{lead.interest}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            lead.type === 'Buying' ? 'default' : 'secondary'
+                          }
+                        >
+                          {lead.type === 'Buying'
+                            ? t('posts.buying')
+                            : t('posts.selling')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {lead.budget}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(lead.status)}>
+                          {getStatusLabel(lead.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {lead.source}
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate text-sm text-gray-600">
+                          {lead.notes}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{lead.interest}</TableCell>
-                    <TableCell>
-                      <Badge variant={lead.type === 'Buying' ? 'default' : 'secondary'}>
-                        {lead.type === 'Buying' ? t('posts.buying') : t('posts.selling')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-gray-600">{lead.budget}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(lead.status)}>
-                        {getStatusLabel(lead.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-gray-600">{lead.source}</TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="truncate text-sm text-gray-600">{lead.notes}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleEditLead(lead)}>
-                          {t('common.edit')}
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteLead(lead._id)}>
-                          {t('common.delete')}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              console.log(
+                                '🔘 Chat button clicked for lead:',
+                                leadId,
+                                'Full lead:',
+                                lead
+                              );
+                              if (!leadId) {
+                                console.error(
+                                  '❌ Lead ID is missing!',
+                                  lead
+                                );
+                                alert(
+                                  'Không tìm thấy ID khách hàng. Vui lòng thử lại.'
+                                );
+                                return;
+                              }
+                              if (onNavigate) {
+                                console.log(
+                                  '✅ onNavigate available, navigating to conversations with leadId:',
+                                  leadId
+                                );
+                                onNavigate('conversations', { leadId });
+                              } else {
+                                console.warn(
+                                  '⚠️ onNavigate not available, falling back to copy link'
+                                );
+                                handleCopyChatLink(leadId);
+                              }
+                            }}
+                            title="Chuyển sang trang cuộc trò chuyện"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-1" />
+                            Chat
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditLead(lead)}
+                          >
+                            {t('common.edit')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() =>
+                              handleDeleteLead(leadId as string)
+                            }
+                          >
+                            {t('common.delete')}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
 
+        {/* Edit Lead Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
@@ -521,7 +676,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                   id="edit-name"
                   placeholder="Ví dụ: Nguyễn Văn A"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -531,7 +688,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     id="edit-phone"
                     placeholder="0123456789"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
                   />
                 </div>
                 <div className="grid gap-2">
@@ -541,7 +700,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                     type="email"
                     placeholder="khachhang@email.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -551,7 +712,9 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                   id="edit-location"
                   placeholder="Ví dụ: Hà Nội"
                   value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
                 />
               </div>
               <div className="grid gap-2">
@@ -560,13 +723,20 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                   id="edit-interest"
                   placeholder="Ví dụ: Laptop Dell"
                   value={formData.interest}
-                  onChange={(e) => setFormData({ ...formData, interest: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, interest: e.target.value })
+                  }
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-type">Loại</Label>
-                  <Select value={formData.type} onValueChange={(val) => setFormData({ ...formData, type: val })}>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(val) =>
+                      setFormData({ ...formData, type: val })
+                    }
+                  >
                     <SelectTrigger id="edit-type">
                       <SelectValue />
                     </SelectTrigger>
@@ -578,7 +748,12 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-priority">Ưu tiên</Label>
-                  <Select value={formData.priority} onValueChange={(val) => setFormData({ ...formData, priority: val })}>
+                  <Select
+                    value={formData.priority}
+                    onValueChange={(val) =>
+                      setFormData({ ...formData, priority: val })
+                    }
+                  >
                     <SelectTrigger id="edit-priority">
                       <SelectValue />
                     </SelectTrigger>
@@ -596,12 +771,19 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                   id="edit-budget"
                   placeholder="Ví dụ: 7-10 triệu"
                   value={formData.budget}
-                  onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, budget: e.target.value })
+                  }
                 />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-source">Nguồn</Label>
-                <Select value={formData.source} onValueChange={(val) => setFormData({ ...formData, source: val })}>
+                <Select
+                  value={formData.source}
+                  onValueChange={(val) =>
+                    setFormData({ ...formData, source: val })
+                  }
+                >
                   <SelectTrigger id="edit-source">
                     <SelectValue />
                   </SelectTrigger>
@@ -619,17 +801,20 @@ export function LeadsManagement({ posts }: LeadsManagementProps) {
                   id="edit-notes"
                   placeholder="Thông tin thêm..."
                   value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowEditDialog(false)}
+              >
                 {t('common.cancel')}
               </Button>
-              <Button onClick={handleUpdateLead}>
-                {t('common.save')}
-              </Button>
+              <Button onClick={handleUpdateLead}>{t('common.save')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
