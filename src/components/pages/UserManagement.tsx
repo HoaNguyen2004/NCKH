@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getToken } from '../../utils/api';
-import { UserPlus, Search, MoreVertical, Mail, Phone, Shield } from 'lucide-react';
+import { UserPlus, Search, MoreVertical, Mail, Phone, Shield, Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -59,9 +59,112 @@ export function UserManagement() {
     email: '',
     phone: '',
     role: 'sales',
-    password: 'password123',
+    password: '',
+    isActive: true,
     permissions: [] as string[]
   });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // States cho kiểm tra email realtime
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [emailCheckTimeout, setEmailCheckTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Hàm kiểm tra email đã tồn tại chưa
+  const checkEmailExists = useCallback(async (email: string) => {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailStatus('idle');
+      return;
+    }
+
+    setEmailStatus('checking');
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/check-email?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setEmailStatus(data.exists ? 'taken' : 'available');
+        if (data.exists) {
+          setErrors(prev => ({ ...prev, email: 'Email này đã được đăng ký' }));
+        }
+      }
+    } catch (err) {
+      console.error('Check email error:', err);
+      setEmailStatus('idle');
+    }
+  }, []);
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user types
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+
+    // Debounce check email
+    if (field === 'email') {
+      setEmailStatus('idle');
+      if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+      const timeout = setTimeout(() => checkEmailExists(value), 500);
+      setEmailCheckTimeout(timeout);
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Vui lòng nhập họ tên';
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Vui lòng nhập email';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Email không hợp lệ';
+    } else if (emailStatus === 'taken') {
+      newErrors.email = 'Email này đã được đăng ký';
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Vui lòng nhập số điện thoại';
+    } else if (!/^[0-9]{10}$/.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Số điện thoại không hợp lệ (10 chữ số)';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Vui lòng nhập mật khẩu';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateEditForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Vui lòng nhập họ tên';
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Vui lòng nhập số điện thoại';
+    } else if (!/^[0-9]{10}$/.test(formData.phone.replace(/\s/g, ''))) {
+      newErrors.phone = 'Số điện thoại không hợp lệ (10 chữ số)';
+    }
+
+    // Mật khẩu là tùy chọn khi edit
+    if (formData.password && formData.password.trim()) {
+      if (formData.password.length < 6) {
+        newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -84,7 +187,8 @@ export function UserManagement() {
           role: u.role || 'user',
           roleDisplay: u.role || 'user',
           permissions: u.permissions || [],
-          status: 'active',
+          isActive: u.isActive !== false, // Default to true if not set
+          status: u.isActive !== false ? 'active' : 'inactive',
           lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Chưa có',
           // Số bài đã phân tích được lấy trực tiếp từ API
           postsAnalyzed: typeof u.postsAnalyzed === 'number' ? u.postsAnalyzed : (u.postsAnalyzed || 0)
@@ -97,8 +201,7 @@ export function UserManagement() {
   };
 
   const handleAddUser = async () => {
-    if (!formData.fullName || !formData.email) {
-      alert('Vui lòng nhập đầy đủ thông tin');
+    if (!validateForm()) {
       return;
     }
 
@@ -122,7 +225,9 @@ export function UserManagement() {
       const data = await response.json();
       if (data.success) {
         alert('Thêm người dùng thành công');
-        setFormData({ fullName: '', email: '', phone: '', role: 'sales', password: 'password123', permissions: [] });
+        setFormData({ fullName: '', email: '', phone: '', role: 'sales', password: '', isActive: true, permissions: [] });
+        setErrors({});
+        setEmailStatus('idle');
         setShowDialog(false);
         fetchUsers();
       } else {
@@ -141,15 +246,15 @@ export function UserManagement() {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      password: 'password123',
+      password: '', // Để trống khi edit
+      isActive: user.isActive !== false, // Default to true if not set
       permissions: user.permissions || []
     });
     setShowEditDialog(true);
   };
 
   const handleUpdateUser = async () => {
-    if (!formData.fullName || !formData.email) {
-      alert('Vui lòng nhập đầy đủ thông tin');
+    if (!validateEditForm()) {
       return;
     }
 
@@ -157,15 +262,24 @@ export function UserManagement() {
       const token = getToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const updateData: any = {
+        fullName: formData.fullName,
+        phone: formData.phone,
+        role: formData.role,
+        isActive: formData.isActive,
+        permissions: []
+      };
+
+      // Chỉ gửi mật khẩu nếu người dùng nhập
+      if (formData.password && formData.password.trim()) {
+        updateData.password = formData.password;
+      }
+
       const response = await fetch(`${API_BASE_URL}/users/${editingUserId}`, {
         method: 'PUT',
         headers,
-        body: JSON.stringify({
-          fullName: formData.fullName,
-          phone: formData.phone,
-          role: formData.role,
-          permissions: []
-        })
+        body: JSON.stringify(updateData)
       });
 
       const data = await response.json();
@@ -173,6 +287,7 @@ export function UserManagement() {
         alert('Cập nhật người dùng thành công');
         setShowEditDialog(false);
         setEditingUserId(null);
+        setErrors({});
         fetchUsers();
       } else {
         alert(data.message || 'Lỗi khi cập nhật người dùng');
@@ -180,6 +295,40 @@ export function UserManagement() {
     } catch (err) {
       console.error('Lỗi:', err);
       alert('Lỗi khi cập nhật người dùng');
+    }
+  };
+
+  const handleToggleUserStatus = async (user: any) => {
+    const newStatus = user.isActive ? 'vô hiệu hóa' : 'kích hoạt';
+    if (!confirm(`Bạn chắc chắn muốn ${newStatus} tài khoản của người dùng này?`)) return;
+
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`${API_BASE_URL}/users/${user._id || user.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          fullName: user.name,
+          phone: user.phone,
+          role: user.role,
+          isActive: !user.isActive,
+          permissions: user.permissions || []
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(`${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} tài khoản thành công`);
+        fetchUsers();
+      } else {
+        alert(data.message || `Lỗi khi ${newStatus} tài khoản`);
+      }
+    } catch (err) {
+      console.error('Lỗi:', err);
+      alert(`Lỗi khi ${newStatus} tài khoản`);
     }
   };
 
@@ -284,18 +433,29 @@ export function UserManagement() {
                     id="fullName"
                     placeholder="Nhập tên"
                     value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    onChange={(e) => handleChange('fullName', e.target.value)}
                   />
+                  {errors.fullName && <div className="text-red-500 text-sm">{errors.fullName}</div>}
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="nhập@email.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="nhập@email.com"
+                      value={formData.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      className={errors.email ? 'border-red-500' : emailStatus === 'available' ? 'border-green-500' : ''}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {emailStatus === 'checking' && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                      {emailStatus === 'available' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                      {emailStatus === 'taken' && <XCircle className="w-4 h-4 text-red-500" />}
+                    </div>
+                  </div>
+                  {errors.email && <div className="text-red-500 text-sm">{errors.email}</div>}
+                  {emailStatus === 'available' && <div className="text-green-500 text-sm">Email có thể sử dụng</div>}
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="phone">Điện thoại</Label>
@@ -303,8 +463,32 @@ export function UserManagement() {
                     id="phone"
                     placeholder="0123456789"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => handleChange('phone', e.target.value)}
                   />
+                  {errors.phone && <div className="text-red-500 text-sm">{errors.phone}</div>}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Mật khẩu</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
+                      value={formData.password}
+                      onChange={(e) => handleChange('password', e.target.value)}
+                      className={errors.password ? 'border-red-500' : ''}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {errors.password && <div className="text-red-500 text-sm">{errors.password}</div>}
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="role">Vai trò</Label>
@@ -347,8 +531,9 @@ export function UserManagement() {
                     id="edit-fullName"
                     placeholder="Nhập tên"
                     value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    onChange={(e) => handleChange('fullName', e.target.value)}
                   />
+                  {errors.fullName && <div className="text-red-500 text-sm">{errors.fullName}</div>}
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-email">Email</Label>
@@ -365,8 +550,33 @@ export function UserManagement() {
                     id="edit-phone"
                     placeholder="0123456789"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => handleChange('phone', e.target.value)}
                   />
+                  {errors.phone && <div className="text-red-500 text-sm">{errors.phone}</div>}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-password">Mật khẩu mới (tùy chọn)</Label>
+                  <div className="relative">
+                    <Input
+                      id="edit-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Để trống nếu không đổi mật khẩu"
+                      value={formData.password}
+                      onChange={(e) => handleChange('password', e.target.value)}
+                      className={errors.password ? 'border-red-500' : ''}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  {errors.password && <div className="text-red-500 text-sm">{errors.password}</div>}
+                  <div className="text-gray-500 text-xs">Để trống nếu không muốn thay đổi mật khẩu</div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-role">Vai trò</Label>
@@ -381,6 +591,18 @@ export function UserManagement() {
                       <SelectItem value="student">IT Student - Sinh viên IT</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit-isActive"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <Label htmlFor="edit-isActive" className="text-sm font-normal">
+                    Tài khoản hoạt động
+                  </Label>
                 </div>
               </div>
               <DialogFooter>
@@ -400,7 +622,7 @@ export function UserManagement() {
         <div className="grid grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t('users.totalUsers')}</CardTitle>
+              <CardTitle>Tổng người dùng</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{users.length}</div>
@@ -409,7 +631,7 @@ export function UserManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('users.activeUsers')}</CardTitle>
+              <CardTitle>Người dùng hoạt động</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
@@ -498,8 +720,12 @@ export function UserManagement() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                        {user.status === 'active' ? t('common.active') : t('common.inactive')}
+                      <Badge
+                        variant={user.status === 'active' ? 'default' : 'secondary'}
+                        className="cursor-pointer hover:opacity-80"
+                        onClick={() => handleToggleUserStatus(user)}
+                      >
+                        {user.status === 'active' ? 'Hoạt động' : 'Vô hiệu hóa'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-gray-600">{user.lastActive}</TableCell>

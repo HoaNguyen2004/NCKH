@@ -344,7 +344,7 @@ module.exports = function(io) {
   // ==========================================
   // PUT /api/posts/:id - Cập nhật bài viết
   // ==========================================
-  router.put('/:id', async (req, res) => {
+  router.put('/:id', requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -386,8 +386,13 @@ module.exports = function(io) {
   // ==========================================
   // DELETE /api/posts/:id - Xóa bài viết
   // ==========================================
-  router.delete('/:id', async (req, res) => {
+  router.delete('/:id', requireAuth, async (req, res) => {
     try {
+      // Chỉ admin và manager mới được xóa posts
+      if (!['admin', 'manager'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Không có quyền xóa bài đăng' });
+      }
+
       const { id } = req.params;
       const post = await Post.findByIdAndDelete(id);
 
@@ -407,7 +412,7 @@ module.exports = function(io) {
   // ==========================================
   // DELETE /api/posts - Xóa tất cả bài viết
   // ==========================================
-  router.delete('/', async (req, res) => {
+  router.delete('/', requireAuth, async (req, res) => {
     try {
       const result = await Post.deleteMany({});
       
@@ -425,8 +430,12 @@ module.exports = function(io) {
   // ==========================================
   // DELETE /api/posts/cleanup/sales - Xóa bài đăng của sales, giữ lại của admin
   // ==========================================
-  router.delete('/cleanup/sales', async (req, res) => {
+  router.delete('/cleanup/sales', requireAuth, async (req, res) => {
     try {
+      // Chỉ admin mới được cleanup posts của sales
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: 'Chỉ admin mới được dọn dẹp bài đăng của sales' });
+      }
       const User = require('../models/User');
       
       // Tìm tất cả user có role = 'sales'

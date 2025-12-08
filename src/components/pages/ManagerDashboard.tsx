@@ -46,6 +46,30 @@ export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
 
   const [loading, setLoading] = useState(true);
 
+  const getColorClass = (color: string) => {
+    const colors: Record<string, string> = {
+      green: 'bg-green-100 text-green-600',
+      blue: 'bg-blue-100 text-blue-600',
+      purple: 'bg-purple-100 text-purple-600',
+      pink: 'bg-pink-100 text-pink-600',
+    };
+    return colors[color] || 'bg-gray-100 text-gray-600';
+  };
+
+  const getPerformanceBadge = (performance: string) => {
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'outline'; label: string }> = {
+      excellent: { variant: 'default', label: 'Xuất sắc' },
+      good: { variant: 'secondary', label: 'Tốt' },
+      average: { variant: 'outline', label: 'Trung bình' },
+    };
+    const config = variants[performance] || variants.average;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const [dateRange, setDateRange] = useState('month');
+  const [selectedDateStart, setSelectedDateStart] = useState<Date | null>(null);
+  const [selectedDateEnd, setSelectedDateEnd] = useState<Date | null>(null);
+
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -84,30 +108,6 @@ export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
 
     fetchDashboardData();
   }, [dateRange]);
-
-  const getColorClass = (color: string) => {
-    const colors: Record<string, string> = {
-      green: 'bg-green-100 text-green-600',
-      blue: 'bg-blue-100 text-blue-600',
-      purple: 'bg-purple-100 text-purple-600',
-      pink: 'bg-pink-100 text-pink-600',
-    };
-    return colors[color] || 'bg-gray-100 text-gray-600';
-  };
-
-  const getPerformanceBadge = (performance: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'outline'; label: string }> = {
-      excellent: { variant: 'default', label: 'Xuất sắc' },
-      good: { variant: 'secondary', label: 'Tốt' },
-      average: { variant: 'outline', label: 'Trung bình' },
-    };
-    const config = variants[performance] || variants.average;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const [dateRange, setDateRange] = useState('month');
-  const [selectedDateStart, setSelectedDateStart] = useState<Date | null>(null);
-  const [selectedDateEnd, setSelectedDateEnd] = useState<Date | null>(null);
 
   const handleDateRangeApply = (startDate: Date, endDate: Date) => {
     setSelectedDateStart(startDate);

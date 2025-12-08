@@ -42,6 +42,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [userRole, setUserRole] = useState<UiRole>('admin');
   const [posts, setPosts] = useState<any[]>([]);
+  const [totalPosts, setTotalPosts] = useState(0);
   const [socketConnected, setSocketConnected] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -136,7 +137,8 @@ export default function App() {
           };
         });
         setPosts(formattedPosts);
-        console.log(`✅ Loaded ${formattedPosts.length} posts from database`);
+        setTotalPosts(data.total || formattedPosts.length);
+        console.log(`✅ Loaded ${formattedPosts.length} posts from database (total: ${data.total})`);
       } else {
         console.warn('⚠️ API returned no posts:', data);
       }
@@ -276,6 +278,7 @@ export default function App() {
     // Nhận thông báo xóa bài viết
     socket.on('posts:deleted', (data: { id: string }) => {
       setPosts(prev => prev.filter(p => p.id !== data.id));
+      setTotalPosts(prev => Math.max(0, prev - 1));
     });
 
     // Xóa tất cả posts
@@ -546,7 +549,7 @@ export default function App() {
       case 'users':
         return <UserManagement />;
       case 'posts':
-        return <PostsManagement posts={posts} socketConnected={socketConnected} onRefresh={fetchPosts} userRole={userRole} />;
+        return <PostsManagement posts={posts} totalPosts={totalPosts} socketConnected={socketConnected} onRefresh={fetchPosts} userRole={userRole} />;
       case 'scraper':
         return <Scraper onNavigateToPosts={() => setCurrentPage('posts')} />;
       case 'groups':

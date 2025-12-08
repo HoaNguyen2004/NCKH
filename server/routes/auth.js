@@ -275,6 +275,14 @@ router.post('/login', async (req, res) => {
     const ok = await user.comparePassword(password);
     if (!ok) return res.status(401).json({ success: false, message: 'Email hoặc mật khẩu sai' });
 
+    // Kiểm tra tài khoản có bị vô hiệu hóa không
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.'
+      });
+    }
+
     const token = signToken(user._id.toString());
     return res.json({ success: true, message: 'Đăng nhập thành công', token });
   } catch (err) {

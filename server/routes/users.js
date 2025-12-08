@@ -130,9 +130,15 @@ router.post('/', async (req, res) => {
 // PUT /api/users/:id - Cập nhật người dùng
 router.put('/:id', async (req, res) => {
   try {
-    const { fullName, phone, company, location, role, permissions } = req.body;
+    const { fullName, phone, company, location, role, permissions, password, isActive } = req.body;
     const update = { fullName, phone, company, location, role };
     if (permissions) update.permissions = permissions;
+    if (password && password.trim()) {
+      update.password = password; // Mật khẩu sẽ được hash tự động bởi schema
+    }
+    if (typeof isActive === 'boolean') {
+      update.isActive = isActive;
+    }
     const user = await User.findByIdAndUpdate(
       req.params.id,
       update,

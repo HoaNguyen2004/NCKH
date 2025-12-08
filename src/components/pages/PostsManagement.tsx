@@ -40,6 +40,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PostsManagementProps {
   posts: any[];
+  totalPosts?: number;
   socketConnected?: boolean;
   onRefresh?: () => void;
   userRole?: 'admin' | 'manager' | 'sales';
@@ -47,7 +48,7 @@ interface PostsManagementProps {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export function PostsManagement({ posts, socketConnected = false, onRefresh, userRole = 'admin' }: PostsManagementProps) {
+export function PostsManagement({ posts, totalPosts = 0, socketConnected = false, onRefresh, userRole = 'admin' }: PostsManagementProps) {
   const { t } = useLanguage();
   const [filterType, setFilterType] = useState('all');
   const [filterPlatform, setFilterPlatform] = useState('all');
@@ -120,7 +121,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh, use
   }, [posts, filterType, filterPlatform, searchQuery]);
 
   // Tính toán phân trang
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
   const startIndex = (currentPage - 1) * postsPerPage;
   const endIndex = startIndex + postsPerPage;
   const currentPosts = filteredPosts.slice(startIndex, endIndex);
@@ -359,7 +360,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh, use
               <CardTitle className="text-sm text-blue-700">{t('posts.totalPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-900">{posts.length}</div>
+              <div className="text-3xl font-bold text-blue-900">{totalPosts}</div>
             </CardContent>
           </Card>
 
@@ -600,7 +601,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh, use
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
                     <div className="text-sm text-gray-600">
-                      Hiển thị {startIndex + 1} - {Math.min(endIndex, filteredPosts.length)} trong tổng số {filteredPosts.length} bài đăng
+                      Hiển thị {startIndex + 1} - {Math.min(endIndex, filteredPosts.length)} trong tổng số {totalPosts} bài đăng
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
