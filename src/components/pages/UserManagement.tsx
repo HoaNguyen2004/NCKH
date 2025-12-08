@@ -58,7 +58,7 @@ export function UserManagement() {
     fullName: '',
     email: '',
     phone: '',
-    role: 'Sales Staff',
+    role: 'sales',
     password: 'password123',
     permissions: [] as string[]
   });
@@ -82,6 +82,7 @@ export function UserManagement() {
           email: u.email || '',
           phone: u.phone || '',
           role: u.role || 'user',
+          roleDisplay: u.role || 'user',
           permissions: u.permissions || [],
           status: 'active',
           lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Chưa có',
@@ -108,13 +109,20 @@ export function UserManagement() {
       const response = await fetch(`${API_BASE_URL}/users`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          role: formData.role,
+          password: formData.password,
+          permissions: []
+        })
       });
 
       const data = await response.json();
       if (data.success) {
         alert('Thêm người dùng thành công');
-        setFormData({ fullName: '', email: '', phone: '', role: 'Sales Staff', password: 'password123', permissions: [] });
+        setFormData({ fullName: '', email: '', phone: '', role: 'sales', password: 'password123', permissions: [] });
         setShowDialog(false);
         fetchUsers();
       } else {
@@ -156,7 +164,7 @@ export function UserManagement() {
           fullName: formData.fullName,
           phone: formData.phone,
           role: formData.role,
-          permissions: formData.permissions || []
+          permissions: []
         })
       });
 
@@ -202,17 +210,28 @@ export function UserManagement() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'Admin':
-        return 'bg-red-100 text-red-700';
-      case 'Store Manager':
-        return 'bg-purple-100 text-purple-700';
-      case 'Sales Staff':
-        return 'bg-blue-100 text-blue-700';
-      case 'SMB Owner':
+      case 'smb':
         return 'bg-green-100 text-green-700';
+      case 'sales':
+        return 'bg-blue-100 text-blue-700';
+      case 'manager':
+        return 'bg-purple-100 text-purple-700';
+      case 'student':
+        return 'bg-orange-100 text-orange-700';
       default:
         return 'bg-gray-100 text-gray-700';
     }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    const roleMap: Record<string, string> = {
+      'smb': 'SMB Owner',
+      'sales': 'Sales Staff',
+      'manager': 'Store Manager',
+      'student': 'IT Student',
+      'admin': 'Admin'
+    };
+    return roleMap[role] || role;
   };
 
   const getInitials = (name: string | undefined) => {
@@ -230,7 +249,7 @@ export function UserManagement() {
       user.name.toLowerCase().includes(query) ||
       user.email.toLowerCase().includes(query) ||
       user.phone.includes(query) ||
-      user.role.toLowerCase().includes(query)
+      getRoleDisplayName(user.role).toLowerCase().includes(query)
     );
   });
 
@@ -294,36 +313,12 @@ export function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin - Quản trị viên</SelectItem>
-                      <SelectItem value="Store Manager">Store Manager</SelectItem>
-                      <SelectItem value="Sales Staff">Sales Staff</SelectItem>
-                      <SelectItem value="SMB Owner">SMB Owner</SelectItem>
+                      <SelectItem value="smb">SMB Owner - Chủ cửa hàng nhỏ</SelectItem>
+                      <SelectItem value="sales">Sales Staff - Nhân viên bán hàng</SelectItem>
+                      <SelectItem value="manager">Store Manager - Quản lý cửa hàng</SelectItem>
+                      <SelectItem value="student">IT Student - Sinh viên IT</SelectItem>
                     </SelectContent>
                   </Select>
-                  {/* Phân quyền chi tiết */}
-                  <div className="mt-2">
-                    <Label>Phân quyền</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {['view_reports','manage_products','manage_leads','manage_users','access_ai','export_data'].map((perm) => (
-                        <label key={perm} className="flex items-center gap-1 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions?.includes(perm) || false}
-                            onChange={e => {
-                              const checked = e.target.checked;
-                              setFormData(f => ({
-                                ...f,
-                                permissions: checked
-                                  ? [...(f.permissions||[]), perm]
-                                  : (f.permissions||[]).filter(p => p !== perm)
-                              }));
-                            }}
-                          />
-                          {perm}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -380,36 +375,12 @@ export function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin - Quản trị viên</SelectItem>
-                      <SelectItem value="Store Manager">Store Manager</SelectItem>
-                      <SelectItem value="Sales Staff">Sales Staff</SelectItem>
-                      <SelectItem value="SMB Owner">SMB Owner</SelectItem>
+                      <SelectItem value="smb">SMB Owner - Chủ cửa hàng nhỏ</SelectItem>
+                      <SelectItem value="sales">Sales Staff - Nhân viên bán hàng</SelectItem>
+                      <SelectItem value="manager">Store Manager - Quản lý cửa hàng</SelectItem>
+                      <SelectItem value="student">IT Student - Sinh viên IT</SelectItem>
                     </SelectContent>
                   </Select>
-                  {/* Phân quyền chi tiết */}
-                  <div className="mt-2">
-                    <Label>Phân quyền</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {['view_reports','manage_products','manage_leads','manage_users','access_ai','export_data'].map((perm) => (
-                        <label key={perm} className="flex items-center gap-1 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissions?.includes(perm) || false}
-                            onChange={e => {
-                              const checked = e.target.checked;
-                              setFormData(f => ({
-                                ...f,
-                                permissions: checked
-                                  ? [...(f.permissions||[]), perm]
-                                  : (f.permissions||[]).filter(p => p !== perm)
-                              }));
-                            }}
-                          />
-                          {perm}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -449,22 +420,22 @@ export function UserManagement() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('role.sales')}</CardTitle>
+              <CardTitle>Sales Staff</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
-                {users.filter(u => u.role === 'Sales Staff').length}
+                {users.filter(u => u.role === 'sales').length}
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('role.manager')}</CardTitle>
+              <CardTitle>Store Manager</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">
-                {users.filter(u => u.role === 'Store Manager').length}
+                {users.filter(u => u.role === 'manager').length}
               </div>
             </CardContent>
           </Card>
@@ -523,7 +494,7 @@ export function UserManagement() {
                     </TableCell>
                     <TableCell>
                       <Badge className={getRoleColor(user.role)}>
-                        {user.role}
+                        {getRoleDisplayName(user.role)}
                       </Badge>
                     </TableCell>
                     <TableCell>

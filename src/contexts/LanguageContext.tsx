@@ -352,9 +352,10 @@ const translations = {
     
     // Roles
     'role.admin': 'Quản trị viên',
-    'role.manager': 'Quản lý',
-    'role.sales': 'Nhân viên bán hàng',
-    'role.student': 'Sinh viên IT',
+    'role.manager': 'Store Manager',
+    'role.sales': 'Sales Staff',
+    'role.smb': 'SMB Owner',
+    'role.student': 'IT Student',
 
     // Account
     'account.button': 'Tài khoản',
@@ -520,7 +521,23 @@ const translations = {
     'posts.positive': 'Positive',
     'posts.neutral': 'Neutral',
     'posts.negative': 'Negative',
-    
+    // Posts – extra labels
+    'posts.today': 'Today',
+    'posts.noPosts': 'No posts',
+    'posts.noPostsHint': 'Posts will appear here after scraping from the "Data Scraper" page',
+    'posts.refresh': 'Refresh',
+    'posts.table.content': 'Content',
+    'posts.table.type': 'Type',
+    'posts.table.category': 'Category',
+    'posts.table.platform': 'Platform',
+    'posts.table.author': 'Author',
+    'posts.table.price': 'Price',
+    'posts.table.confidence': 'Confidence',
+    'posts.table.active': 'Active',
+    'posts.table.time': 'Time',
+    'posts.table.actions': 'Actions',
+    'posts.viewOriginal': 'View Original',
+
     // Products Page
     'products.title': 'Product Management',
     'products.subtitle': 'Track prices and market demand',
@@ -710,8 +727,9 @@ const translations = {
     
     // Roles
     'role.admin': 'Administrator',
-    'role.manager': 'Manager',
+    'role.manager': 'Store Manager',
     'role.sales': 'Sales Staff',
+    'role.smb': 'SMB Owner',
     'role.student': 'IT Student',
 
     // Account

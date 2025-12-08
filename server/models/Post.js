@@ -110,7 +110,7 @@ const postSchema = new mongoose.Schema({
     enum: ['new', 'processing', 'contacted', 'converted', 'archived'],
     default: 'new'
   },
-  
+
   // Hash để kiểm tra trùng lặp
   contentHash: {
     type: String,

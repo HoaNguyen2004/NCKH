@@ -419,21 +419,21 @@ export default function App() {
               console.log(`Đã lọc ${parsed.items.length - uniqueItems.length} bài trùng lặp, thêm ${uniqueItems.length} bài mới`);
 
               const newPosts = uniqueItems.map((item: any, index: number) => ({
-                id: Date.now() + index,
-                content: item.title || item.fullText?.substring(0, 50) + '...',
-                fullContent: item.fullText || item.title,
-                type: item.type === 'marketplace' ? 'Selling' : 'Buying',
-                platform: 'Facebook',
-                confidence: (Math.random() * 20 + 80).toFixed(1) + '%',
-                time: new Date().toLocaleTimeString(),
-                date: new Date().toLocaleDateString(),
-                author: item.author || 'Unknown',
-                price: item.price ? parseInt(item.price.replace(/[^\d]/g, '')) || 0 : 0,
-                location: item.location || 'Việt Nam',
-                category: item.keyword || 'Khác',
-                status: 'new',
-                url: item.url,
-                image: item.image
+              id: Date.now() + index,
+              content: item.title || item.fullText?.substring(0, 50) + '...',
+              fullContent: item.fullText || item.title,
+              type: item.type === 'marketplace' ? 'Selling' : 'Buying',
+              platform: 'Facebook',
+              confidence: (Math.random() * 20 + 80).toFixed(1) + '%',
+              time: new Date().toLocaleTimeString(),
+              date: new Date().toLocaleDateString(),
+              author: item.author || 'Unknown',
+              price: item.price ? parseInt(item.price.replace(/[^\d]/g, '')) || 0 : 0,
+              location: item.location || 'Việt Nam',
+              category: item.keyword || 'Khác',
+              status: 'new',
+              url: item.url,
+              image: item.image
               }));
 
               return [...newPosts, ...prevPosts];
@@ -546,7 +546,7 @@ export default function App() {
       case 'users':
         return <UserManagement />;
       case 'posts':
-        return <PostsManagement posts={posts} socketConnected={socketConnected} onRefresh={fetchPosts} />;
+        return <PostsManagement posts={posts} socketConnected={socketConnected} onRefresh={fetchPosts} userRole={userRole} />;
       case 'scraper':
         return <Scraper onNavigateToPosts={() => setCurrentPage('posts')} />;
       case 'groups':

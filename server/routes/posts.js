@@ -1,5 +1,6 @@
 /* server/routes/posts.js */
 const express = require('express');
+const mongoose = require('mongoose');
 const Post = require('../models/Post');
 const { requireAuth } = require('../middleware/auth');
 
@@ -39,7 +40,7 @@ module.exports = function(io) {
       if (status && status !== 'all') filter.status = status;
       if (keyword) filter.keyword = { $regex: keyword, $options: 'i' };
 
-      // Kiểm tra nếu có user đăng nhập và là sales -> chỉ lấy bài của họ
+      // Kiểm tra nếu có user đăng nhập và phân quyền theo role
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
         try {
@@ -49,12 +50,13 @@ module.exports = function(io) {
           const token = authHeader.slice(7);
           const payload = jwt.verify(token, JWT_SECRET);
           const user = await User.findById(payload.userId).select('role email');
-          
+
           if (user && user.role === 'sales') {
-            // Sales chỉ thấy bài được admin gán (assignedTo) cho họ, không thấy bài khác
-            filter.assignedTo = user._id;
-            console.log(`🔒 Sales user ${user.email} - chỉ thấy bài được gán (assignedTo)`);
-          } else if (user) {
+            // Sales chỉ thấy bài đăng được gán cho họ (assignedTo chứa userId)
+            filter.assignedTo = { $in: [user._id] };
+            console.log(`🔒 Sales user ${user.email} - chỉ thấy bài đăng được gán cho họ`);
+          } else if (user && (user.role === 'admin' || user.role === 'manager')) {
+            // Admin và Manager thấy tất cả bài đăng
             console.log(`👑 ${user.role} user ${user.email} - showing all posts`);
           }
         } catch (authErr) {
@@ -68,6 +70,7 @@ module.exports = function(io) {
         .sort(sort)
         .limit(parseInt(limit))
         .skip(parseInt(skip))
+        .populate('assignedTo', 'fullName email')
         .lean(); // Use lean() for better performance
 
       const total = await Post.countDocuments(filter);
@@ -107,10 +110,10 @@ module.exports = function(io) {
           const token = authHeader.slice(7);
           const payload = jwt.verify(token, JWT_SECRET);
           const user = await User.findById(payload.userId).select('role email');
-          
+
           if (user && user.role === 'sales') {
-            // Sales chỉ thấy stats của bài được admin gán
-            baseFilter = { assignedTo: user._id };
+            // Sales chỉ thấy stats của bài được gán cho họ
+            baseFilter = { assignedTo: { $in: [user._id] } };
             console.log(`🔒 Sales stats for ${user.email} - chỉ đếm bài được gán`);
           }
         } catch (authErr) {
@@ -354,8 +357,8 @@ module.exports = function(io) {
             .filter(id => id) // Loại bỏ null/undefined
             .map(id => {
               // Nếu đã là ObjectId thì giữ nguyên, nếu là string thì chuyển đổi
-              return typeof id === 'string' && id.length === 24 
-                ? require('mongoose').Types.ObjectId(id) 
+              return typeof id === 'string' && id.length === 24
+                ? new mongoose.Types.ObjectId(id)
                 : id;
             });
         } else if (updates.assignedTo === null || updates.assignedTo === '') {

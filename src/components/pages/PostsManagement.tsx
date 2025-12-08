@@ -42,11 +42,12 @@ interface PostsManagementProps {
   posts: any[];
   socketConnected?: boolean;
   onRefresh?: () => void;
+  userRole?: 'admin' | 'manager' | 'sales';
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export function PostsManagement({ posts, socketConnected = false, onRefresh }: PostsManagementProps) {
+export function PostsManagement({ posts, socketConnected = false, onRefresh, userRole = 'admin' }: PostsManagementProps) {
   const { t } = useLanguage();
   const [filterType, setFilterType] = useState('all');
   const [filterPlatform, setFilterPlatform] = useState('all');
@@ -179,6 +180,8 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
       const token = getToken();
       const id = post._id || post.id;
       const body = { assignedTo: userId ? [userId] : [] };
+      console.log('Assigning user to post:', { postId: id, userId, body });
+
       const res = await fetch(`${API_URL}/posts/${id}`, {
         method: 'PUT',
         headers: {
@@ -188,14 +191,22 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
         body: JSON.stringify(body)
       });
       const j = await res.json();
+      console.log('Assign response:', j);
+
       if (!res.ok) {
         console.error('Failed to assign user to post', j);
+        alert('Lỗi khi gán người dùng: ' + (j.message || 'Unknown error'));
         return;
       }
+
       // Refresh list if parent provided the handler
-      if (onRefresh) onRefresh();
+      if (onRefresh) {
+        console.log('Refreshing posts list...');
+        onRefresh();
+      }
     } catch (err) {
       console.error('Error assigning user to post', err);
+      alert('Lỗi khi gán người dùng');
     }
   };
 
@@ -457,7 +468,9 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                         <TableHead className="whitespace-nowrap">{t('posts.table.price')}</TableHead>
                         <TableHead className="whitespace-nowrap">{t('posts.table.confidence')}</TableHead>
                         <TableHead className="whitespace-nowrap">{t('posts.table.time')}</TableHead>
-                        <TableHead className="whitespace-nowrap">{t('posts.table.actions')}</TableHead>
+                        {(userRole === 'admin' || userRole === 'manager') && (
+                          <TableHead className="whitespace-nowrap">{t('posts.table.actions')}</TableHead>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -505,7 +518,7 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div className="w-12 bg-gray-200 h-2 rounded-full overflow-hidden flex-shrink-0">
-                                <div 
+                                <div
                                   className="bg-green-500 h-full"
                                   style={{ width: typeof post.confidence === 'string' ? post.confidence : `${post.confidence}%` }}
                                 />
@@ -517,8 +530,9 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                             <div>{post.date}</div>
                             <div>{post.time}</div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          {(userRole === 'admin' || userRole === 'manager') && (
+                            <TableCell>
+                              <div className="flex items-center gap-2">
                               <select
                                 value={(post.assignedTo && post.assignedTo.length > 0) ? (post.assignedTo[0]._id || post.assignedTo[0]) : ''}
                                 onChange={(e) => handleAssignUser(post, e.target.value || null)}
@@ -574,7 +588,8 @@ export function PostsManagement({ posts, socketConnected = false, onRefresh }: P
                                 </Button>
                               </div>
                             </div>
-                          </TableCell>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>

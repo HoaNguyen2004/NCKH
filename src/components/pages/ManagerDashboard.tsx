@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Target, TrendingUp, DollarSign, BarChart3, Calendar } from 'lucide-react';
 import { DateRangeDialog } from '../dialogs/DateRangeDialog';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getToken } from '../../utils/api';
 import {
   Card,
   CardContent,
@@ -27,27 +28,62 @@ interface ManagerDashboardProps {
 
 export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
   const { t } = useLanguage();
-  
-  const businessMetrics = [
-    { label: t('manager.revenue'), value: '₫45.2M', change: '+23%', icon: DollarSign, color: 'green' },
-    { label: t('manager.totalLeads'), value: '342', change: '+15%', icon: Target, color: 'blue' },
-    { label: t('manager.conversionRate'), value: '28.5%', change: '+5%', icon: TrendingUp, color: 'purple' },
-    { label: t('manager.teamMembers'), value: '12', change: '+2', icon: Users, color: 'pink' },
-  ];
 
-  const teamPerformance = [
-    { name: 'Nguyễn Văn A', role: 'Sales Staff', leads: 45, converted: 12, revenue: '12.5M', performance: 'excellent' },
-    { name: 'Trần Thị B', role: 'Sales Staff', leads: 38, converted: 10, revenue: '9.8M', performance: 'good' },
-    { name: 'Lê Văn C', role: 'Sales Staff', leads: 32, converted: 8, revenue: '8.2M', performance: 'good' },
-    { name: 'Phạm Thị D', role: 'Sales Staff', leads: 25, converted: 5, revenue: '5.5M', performance: 'average' },
-  ];
+  const [businessMetrics, setBusinessMetrics] = useState([
+    { label: t('manager.revenue'), value: '₫0M', change: '0%', icon: DollarSign, color: 'green' },
+    { label: t('manager.totalLeads'), value: '0', change: '0%', icon: Target, color: 'blue' },
+    { label: t('manager.conversionRate'), value: '0%', change: '0%', icon: TrendingUp, color: 'purple' },
+    { label: t('manager.teamMembers'), value: '0', change: '0', icon: Users, color: 'pink' },
+  ]);
 
-  const productTrends = [
-    { product: 'Laptop Dell', demand: 'high', posts: 89, avgPrice: '8.5M', trend: 'up' },
-    { product: 'iPhone 12', demand: 'high', posts: 67, avgPrice: '15M', trend: 'up' },
-    { product: 'MacBook Pro', demand: 'medium', posts: 45, avgPrice: '25M', trend: 'stable' },
-    { product: 'Samsung Galaxy', demand: 'low', posts: 23, avgPrice: '12M', trend: 'down' },
-  ];
+  const [teamPerformance, setTeamPerformance] = useState([
+    { name: 'Loading...', role: 'Sales Staff', leads: 0, converted: 0, revenue: '0M', performance: 'average' }
+  ]);
+
+  const [productTrends, setProductTrends] = useState([
+    { product: 'Loading...', demand: 'low', posts: 0, avgPrice: '0M', trend: 'stable' }
+  ]);
+
+  const [loading, setLoading] = useState(true);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const token = getToken();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reports/dashboard?range=${dateRange}`, { headers });
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          const { businessMetrics: metrics, teamPerformance: team, productTrends: products } = data.data;
+
+          // Update business metrics with real data
+          setBusinessMetrics(metrics.map((metric: any) => ({
+            label: metric.label,
+            value: metric.value,
+            change: metric.change,
+            icon: metric.icon === 'DollarSign' ? DollarSign :
+                  metric.icon === 'Target' ? Target :
+                  metric.icon === 'TrendingUp' ? TrendingUp : Users,
+            color: metric.color
+          })));
+
+          setTeamPerformance(team);
+          setProductTrends(products);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [dateRange]);
 
   const getColorClass = (color: string) => {
     const colors: Record<string, string> = {
@@ -111,25 +147,43 @@ export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
       <div className="p-8">
         {/* Business Metrics */}
         <div className="grid grid-cols-4 gap-6 mb-6">
-          {businessMetrics.map((metric, idx) => {
-            const Icon = metric.icon;
-            return (
+          {loading ? (
+            // Loading skeleton
+            Array(4).fill(0).map((_, idx) => (
               <Card key={idx}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">{metric.label}</CardTitle>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getColorClass(metric.color)}`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl text-gray-900 mb-1">{metric.value}</div>
-                  <div className="text-sm text-green-600">↗ {metric.change} vs last month</div>
+                  <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
                 </CardContent>
               </Card>
-            );
-          })}
+            ))
+          ) : (
+            businessMetrics.map((metric, idx) => {
+              const Icon = metric.icon;
+              return (
+                <Card key={idx}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm">{metric.label}</CardTitle>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getColorClass(metric.color)}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl text-gray-900 mb-1">{metric.value}</div>
+                    <div className="text-sm text-green-600">↗ {metric.change} vs last month</div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-6">
