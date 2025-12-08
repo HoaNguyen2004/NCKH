@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Play, Loader2, CheckCircle, AlertCircle, RefreshCw, Users, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -425,7 +425,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Login Card */}
-          <Card>
+          <Card className="border-2 border-green-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="text-2xl">🔐</span>
@@ -444,6 +444,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="border-2"
                 />
               </div>
               <Button 
@@ -458,7 +459,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
           </Card>
 
           {/* Mode Selection */}
-          <Card>
+          <Card className="border-2 border-gray-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="text-2xl">⚙️</span>
@@ -471,8 +472,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   onClick={() => setMode('search')}
                   className={`p-4 rounded-lg border-2 text-center transition-all ${
                     mode === 'search' 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50 shadow-md' 
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
                   }`}
                 >
                   <div className="text-2xl mb-2">🔍</div>
@@ -483,8 +484,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   onClick={() => setMode('feed')}
                   className={`p-4 rounded-lg border-2 text-center transition-all ${
                     mode === 'feed' 
-                      ? 'border-orange-500 bg-orange-50' 
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-orange-500 bg-orange-50 shadow-md' 
+                      : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
                   }`}
                 >
                   <div className="text-2xl mb-2">📰</div>
@@ -497,7 +498,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
           {/* Search Mode */}
           {mode === 'search' && (
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 border-2 border-blue-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Search className="w-5 h-5" />
@@ -509,20 +510,13 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>{t('scraper.groupLinkLabel')}</Label>
-                  <Input
-                    placeholder="https://www.facebook.com/groups/123456"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label>{t('scraper.keywordsLabel')}</Label>
                   <Textarea
                     placeholder="iphone 15 pro max&#10;macbook m3&#10;samsung s24"
                     rows={4}
                     value={keywords}
                     onChange={(e) => setKeywords(e.target.value)}
+                    className="border-2"
                   />
                 </div>
                 <div className="space-y-2">
@@ -531,36 +525,30 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     placeholder="VD: Hà Nội, TP.HCM, Đà Nẵng..."
                     value={groupLocation}
                     onChange={(e) => setGroupLocation(e.target.value)}
+                    className="border-2"
                   />
                   <p className="text-xs text-gray-500">
                     Nếu nhập địa điểm, hệ thống sẽ ưu tiên tìm các nhóm liên quan tới khu vực đó.
                   </p>
                 </div>
                 <div className="pt-2 space-y-3">
-                  <Button 
-                    onClick={handleSearch} 
-                    disabled={isLoading || serverStatus === 'offline'}
-                    className="w-full h-12 text-lg bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        {t('scraper.searchButtonLoading')}
-                      </>
-                    ) : (
-                      <>
-                        <Search className="w-5 h-5 mr-2" />
-                        {t('scraper.searchButtonIdle')}
-                      </>
-                    )}
-                  </Button>
                   <Button
                     variant="outline"
                     onClick={handleSearchGroups}
                     disabled={isLoading || serverStatus === 'offline'}
-                    className="w-full"
+                    className="w-full h-12 text-lg border-2 border-blue-300 hover:bg-blue-50"
                   >
-                    🔍 Quét danh sách hội nhóm theo từ khóa
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Đang quét...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-5 h-5 mr-2" />
+                        🔍 Quét danh sách hội nhóm theo từ khóa
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
@@ -569,7 +557,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
           {/* Feed Mode */}
           {mode === 'feed' && (
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 border-2 border-orange-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <span className="text-xl">📰</span>
@@ -580,46 +568,44 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Chọn nhóm đã quét */}
                 <div className="space-y-2">
-                  <Label>{t('scraper.feedLinkLabel')}</Label>
-                  <Textarea
-                    placeholder="https://www.facebook.com/groups/123456&#10;https://www.facebook.com/groups/789012&#10;(Mỗi dòng 1 link nhóm)"
-                    value={feedUrl}
-                    onChange={(e) => setFeedUrl(e.target.value)}
-                    rows={3}
-                  />
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <Label>Chọn nhóm để quét</Label>
+                  <div className="flex flex-wrap gap-2">
                     <Button 
                       variant="outline" 
-                      size="sm"
-                      onClick={() => setFeedUrl('https://www.facebook.com')}
-                    >
-                      {t('scraper.newsfeedButton')}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setFeedUrl('https://www.facebook.com/groups/feed')}
-                    >
-                      {t('scraper.allGroupsButton')}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
                       onClick={handleOpenGroupSelector}
-                      className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                      className="flex-1 h-12 border-2 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"
                     >
-                      <Users className="w-4 h-4 mr-2" />
-                      Chọn từ nhóm đã quét
+                      <Users className="w-5 h-5 mr-2" />
+                      Chọn từ nhóm đã quét ({savedGroups.length > 0 ? savedGroups.length : '...'})
                     </Button>
                   </div>
+                  {feedUrl && (
+                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border-2 border-gray-200">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-700">Đã chọn:</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setFeedUrl('')}
+                          className="h-6 px-2 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-600 whitespace-pre-line max-h-20 overflow-y-auto">
+                        {feedUrl.split('\n').length} nhóm
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Mức độ ưu tiên */}
                 <div className="space-y-2">
                   <Label>Mức độ ưu tiên quét</Label>
                   <Select value={scrapePriority} onValueChange={(v) => setScrapePriority(v as any)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="border-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -653,7 +639,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     max="30"
                     value={scrollCount}
                     onChange={(e) => setScrollCount(parseInt(e.target.value))}
-                    className="w-full"
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
                   />
                   <div className="flex justify-between text-sm text-gray-500">
                     <span>{t('scraper.scrollMin')}</span>
@@ -663,8 +649,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 <div className="pt-2">
                   <Button 
                     onClick={handleScrapeFeed} 
-                    disabled={isLoading || serverStatus === 'offline'}
-                    className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                    disabled={isLoading || serverStatus === 'offline' || !feedUrl}
+                    className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:opacity-50"
                   >
                     {isLoading ? (
                       <>
@@ -685,7 +671,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
           {/* Group Results */}
           {groups.length > 0 && (
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 border-2 border-indigo-200">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <span className="text-xl">👥</span>
@@ -728,7 +714,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
           {/* Post Results */}
           {results.length > 0 && (
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 border-2 border-emerald-200">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
