@@ -324,7 +324,7 @@ const translations = {
 
     'scraper.keywordsLabel': 'Từ khóa (mỗi dòng 1 từ khóa)',
     'scraper.searchButtonLoading': 'Đang quét Search...',
-    'scraper.step2FeedTitle': 'Bước 2: Cào Feed các nhóm',
+    'scraper.step2FeedTitle': 'Bước 2: Cào Feed',
     'scraper.feedLinkLabel': 'Link Feed',
     'scraper.scrollLabel': 'Số lần cuộn trang',
     'scraper.scrollMin': '5 (Nhanh)',

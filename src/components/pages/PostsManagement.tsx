@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, RefreshCw, UserPlus, Phone, MapPin, DollarSign, FileText, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, RefreshCw, UserPlus, Phone, MapPin, DollarSign, FileText, Tag, ChevronLeft, ChevronRight, ArchiveRestore, Inbox } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -54,6 +54,11 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // State cho tab (active / archived)
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+  const [archivedPosts, setArchivedPosts] = useState<any[]>([]);
+  const [archivedLoading, setArchivedLoading] = useState(false);
+  
   // State cho dialog thêm khách hàng tiềm năng
   const [showAddLeadDialog, setShowAddLeadDialog] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
@@ -96,6 +101,81 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
       }
     })();
   }, []);
+
+  // Fetch archived posts khi chuyển sang tab lưu trữ
+  const fetchArchivedPosts = async () => {
+    setArchivedLoading(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/posts?status=archived&limit=1000`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      const j = await res.json();
+      if (j?.success && j.posts) {
+        const formattedPosts = j.posts.map((post: any) => {
+          const createdAt = post.createdAt ? new Date(post.createdAt) : new Date();
+          return {
+            id: post._id || post.id,
+            _id: post._id || post.id,
+            content: post.title || post.content || '',
+            fullContent: post.fullContent || post.title || post.content || '',
+            type: post.type || 'Unknown',
+            platform: post.platform || 'Facebook',
+            confidence: typeof post.confidence === 'number' ? post.confidence + '%' : post.confidence || '85%',
+            time: createdAt.toLocaleTimeString('vi-VN'),
+            date: createdAt.toLocaleDateString('vi-VN'),
+            author: post.author || 'Unknown',
+            price: post.price || 0,
+            location: post.location || 'Việt Nam',
+            category: post.category || 'Khác',
+            status: post.status || 'archived',
+            url: post.url,
+            image: post.image,
+            assignedTo: post.assignedTo || []
+          };
+        });
+        setArchivedPosts(formattedPosts);
+      }
+    } catch (err) {
+      console.error('Failed to fetch archived posts:', err);
+    }
+    setArchivedLoading(false);
+  };
+
+  // Fetch archived posts khi chuyển tab
+  useEffect(() => {
+    if (activeTab === 'archived') {
+      fetchArchivedPosts();
+    }
+  }, [activeTab]);
+
+  // Khôi phục bài đăng từ lưu trữ
+  const handleRestore = async (post: any) => {
+    try {
+      const token = getToken();
+      const id = post._id || post.id;
+      const res = await fetch(`${API_URL}/posts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ status: 'new' })
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        console.error('Failed to restore post', j);
+        alert('Lỗi khi khôi phục bài đăng: ' + (j.message || 'Unknown error'));
+        return;
+      }
+      // Xóa khỏi danh sách archived và refresh
+      setArchivedPosts(prev => prev.filter(p => (p._id || p.id) !== id));
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Error restoring post', err);
+      alert('Lỗi khi khôi phục bài đăng');
+    }
+  };
 
   // Tính số bài đăng hôm nay
   const todayPostsCount = useMemo(() => {
@@ -352,7 +432,38 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
         </div>
       </header>
 
+      {/* Tabs Navigation */}
+      <div className="bg-white border-b border-gray-200 px-8">
+        <div className="flex gap-1">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'active'
+                ? 'border-blue-500 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Inbox className="w-4 h-4" />
+            Bài đăng ({posts.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('archived')}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'archived'
+                ? 'border-amber-500 text-amber-600 bg-amber-50/50'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Archive className="w-4 h-4" />
+            Lưu trữ ({archivedPosts.length})
+          </button>
+        </div>
+      </div>
+
       <div className="p-8">
+        {/* Active Posts Tab */}
+        {activeTab === 'active' && (
+          <>
         {/* Stats Cards */}
         <div className="grid grid-cols-5 gap-6 mb-6">
           <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
@@ -471,6 +582,9 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
                         <TableHead className="whitespace-nowrap">{t('posts.table.time')}</TableHead>
                         {(userRole === 'admin' || userRole === 'manager') && (
                           <TableHead className="whitespace-nowrap">{t('posts.table.actions')}</TableHead>
+                        )}
+                        {userRole === 'sales' && (
+                          <TableHead className="whitespace-nowrap">Thao tác</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
@@ -591,6 +705,33 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
                             </div>
                             </TableCell>
                           )}
+                          {userRole === 'sales' && (
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenAddLeadDialog(post)}
+                                  title="Thêm vào khách hàng tiềm năng"
+                                  className="text-green-600 border-green-300 hover:bg-green-50 flex items-center gap-1"
+                                >
+                                  <UserPlus className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Thêm KH</span>
+                                </Button>
+                                {post.url && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => window.open(post.url, '_blank')}
+                                    title={t('posts.viewOriginal')}
+                                    className="flex-shrink-0"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -636,6 +777,133 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
             )}
           </CardContent>
         </Card>
+          </>
+        )}
+
+        {/* Archived Posts Tab */}
+        {activeTab === 'archived' && (
+          <Card className="border-2 border-amber-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Archive className="w-5 h-5 text-amber-600" />
+                  Bài đăng đã lưu trữ ({archivedPosts.length})
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={fetchArchivedPosts}
+                  disabled={archivedLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${archivedLoading ? 'animate-spin' : ''}`} />
+                  Làm mới
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {archivedLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-8 h-8 animate-spin text-amber-500" />
+                </div>
+              ) : archivedPosts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Archive className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <div className="text-gray-400 mb-2">Không có bài đăng nào trong lưu trữ</div>
+                  <div className="text-gray-400 text-sm">Các bài đăng được lưu trữ sẽ xuất hiện ở đây</div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table className="w-full table-auto">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px] whitespace-nowrap">Nội dung</TableHead>
+                        <TableHead className="whitespace-nowrap">Loại</TableHead>
+                        <TableHead className="whitespace-nowrap">Danh mục</TableHead>
+                        <TableHead className="whitespace-nowrap">Nền tảng</TableHead>
+                        <TableHead className="whitespace-nowrap">Tác giả</TableHead>
+                        <TableHead className="whitespace-nowrap">Giá</TableHead>
+                        <TableHead className="whitespace-nowrap">Thời gian</TableHead>
+                        <TableHead className="whitespace-nowrap">Hành động</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {archivedPosts.map((post) => (
+                        <TableRow key={post.id} className="hover:bg-amber-50/50">
+                          <TableCell className="min-w-[200px] max-w-[300px]">
+                            <div className="truncate font-medium text-gray-600" title={post.fullContent || post.content}>
+                              {post.content}
+                            </div>
+                            {post.url && (
+                              <a 
+                                href={post.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Xem bài gốc
+                              </a>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={post.type === 'Buying' ? 'default' : 'secondary'}
+                              className={post.type === 'Buying' 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-orange-100 text-orange-700'
+                              }
+                            >
+                              {post.type === 'Buying' ? 'Mua' : post.type === 'Selling' ? 'Bán' : 'Khác'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{post.category || 'Khác'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              {post.platform}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-700 whitespace-nowrap">{post.author}</TableCell>
+                          <TableCell className="font-medium text-red-600 whitespace-nowrap">
+                            {post.price ? `${post.price.toLocaleString()}đ` : '—'}
+                          </TableCell>
+                          <TableCell className="text-gray-600 text-xs whitespace-nowrap">
+                            <div>{post.date}</div>
+                            <div>{post.time}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleRestore(post)}
+                                className="text-green-600 border-green-300 hover:bg-green-50"
+                                title="Khôi phục bài đăng"
+                              >
+                                <ArchiveRestore className="w-4 h-4 mr-1" />
+                                Khôi phục
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleDelete(post)}
+                                className="text-red-600 hover:bg-red-50"
+                                title="Xóa vĩnh viễn"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Dialog thêm khách hàng tiềm năng */}
@@ -877,7 +1145,7 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
               ) : (
                 <>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Thêm khách hànghehehehe
+                  Thêm khách hàng
                 </>
               )}
             </Button>
