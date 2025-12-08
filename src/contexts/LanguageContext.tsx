@@ -77,11 +77,9 @@ const translations = {
     'admin.databaseBackup': 'Sao lưu dữ liệu',
     'admin.viewLogs': 'Xem nhật ký',
     'admin.analytics': 'Phân tích',
-    'admin.totalPosts': 'Tổng bài đăng',
     
     // Manager Dashboard
     'manager.title': 'Trang quản lý',
-    'manager.totalPosts': 'Tổng bài đăng',
     'manager.subtitle': 'Thông tin kinh doanh và quản lý đội nhóm',
     'manager.revenue': 'Doanh thu tháng này',
     'manager.totalLeads': 'Tổng khách hàng tiềm năng',
@@ -455,11 +453,9 @@ const translations = {
     'admin.databaseBackup': 'Database Backup',
     'admin.viewLogs': 'View Logs',
     'admin.analytics': 'Analytics',
-    'admin.totalPosts': 'Total Posts',
     
     // Manager Dashboard
     'manager.title': 'Manager Dashboard',
-    'manager.totalPosts': 'Total Posts',
     'manager.subtitle': 'Business insights and team management',
     'manager.revenue': 'Revenue This Month',
     'manager.totalLeads': 'Total Leads',
