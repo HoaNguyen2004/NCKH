@@ -101,7 +101,7 @@ export default function App() {
     try {
       console.log(`📡 Fetching posts from ${API_URL}/posts`);
       const token = getToken();
-      const response = await fetch(`${API_URL}/posts?limit=200`, {
+      const response = await fetch(`${API_URL}/posts?limit=20000`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       
@@ -143,7 +143,7 @@ export default function App() {
         console.warn('⚠️ API returned no posts:', data);
       }
     } catch (err) {
-      console.error('❌ Error fetching posts:', err);
+      console.error(' Error fetching posts:', err);
       // Thử fallback: load từ localStorage nếu có
       try {
         const savedData = localStorage.getItem('scraperData');

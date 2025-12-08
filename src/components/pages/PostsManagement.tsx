@@ -877,7 +877,7 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
               ) : (
                 <>
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Thêm khách hàng
+                  Thêm khách hànghehehehe
                 </>
               )}
             </Button>
