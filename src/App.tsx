@@ -101,7 +101,7 @@ export default function App() {
     try {
       console.log(`📡 Fetching posts from ${API_URL}/posts`);
       const token = getToken();
-      const response = await fetch(`${API_URL}/posts?limit=200`, {
+      const response = await fetch(`${API_URL}/posts?limit=10000`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       

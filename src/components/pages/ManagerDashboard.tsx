@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, Target, TrendingUp, DollarSign, BarChart3, Calendar } from 'lucide-react';
+import { Users, Target, TrendingUp, DollarSign, BarChart3, Calendar, FileText } from 'lucide-react';
 import { DateRangeDialog } from '../dialogs/DateRangeDialog';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getToken } from '../../utils/api';
+import { getToken, fetchPostsStats } from '../../utils/api';
 import {
   Card,
   CardContent,
@@ -29,6 +29,9 @@ interface ManagerDashboardProps {
 export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
   const { t } = useLanguage();
 
+  const [totalPosts, setTotalPosts] = useState<number>(0);
+  const [postsLoading, setPostsLoading] = useState(true);
+
   const [businessMetrics, setBusinessMetrics] = useState([
     { label: t('manager.revenue'), value: '₫0M', change: '0%', icon: DollarSign, color: 'green' },
     { label: t('manager.totalLeads'), value: '0', change: '0%', icon: Target, color: 'blue' },
@@ -46,6 +49,7 @@ export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
 
   const [loading, setLoading] = useState(true);
 
+<<<<<<< Updated upstream
   const getColorClass = (color: string) => {
     const colors: Record<string, string> = {
       green: 'bg-green-100 text-green-600',
@@ -69,6 +73,25 @@ export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
   const [dateRange, setDateRange] = useState('month');
   const [selectedDateStart, setSelectedDateStart] = useState<Date | null>(null);
   const [selectedDateEnd, setSelectedDateEnd] = useState<Date | null>(null);
+=======
+  // Fetch total posts từ database
+  useEffect(() => {
+    const loadPostsStats = async () => {
+      try {
+        setPostsLoading(true);
+        const data = await fetchPostsStats();
+        if (data.success && data.stats) {
+          setTotalPosts(data.stats.total || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch posts stats:', err);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+    loadPostsStats();
+  }, []);
+>>>>>>> Stashed changes
 
   // Fetch dashboard data
   useEffect(() => {
@@ -146,7 +169,27 @@ export function ManagerDashboard({ onNavigate }: ManagerDashboardProps) {
 
       <div className="p-8">
         {/* Business Metrics */}
-        <div className="grid grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-5 gap-6 mb-6">
+          {/* Card Tổng bài đăng */}
+          <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm text-indigo-700">{t('manager.totalPosts') || 'Tổng bài đăng'}</CardTitle>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600">
+                  <FileText className="w-5 h-5" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {postsLoading ? (
+                <div className="h-8 bg-indigo-200 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-indigo-900">{totalPosts.toLocaleString()}</div>
+              )}
+              <div className="text-sm text-indigo-600 mt-1">Bài đăng trong hệ thống</div>
+            </CardContent>
+          </Card>
+
           {loading ? (
             // Loading skeleton
             Array(4).fill(0).map((_, idx) => (

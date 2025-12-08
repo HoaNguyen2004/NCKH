@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Eye, Trash2, Archive, Wifi, WifiOff, ExternalLink, RefreshCw, UserPlus, Phone, MapPin, DollarSign, FileText, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -35,7 +35,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { ScrollArea } from '../ui/scroll-area';
-import { getToken } from '../../utils/api';
+import { getToken, fetchPostsStats } from '../../utils/api';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface PostsManagementProps {
@@ -46,6 +46,15 @@ interface PostsManagementProps {
   userRole?: 'admin' | 'manager' | 'sales';
 }
 
+// Định nghĩa interface cho stats từ database
+interface PostsStats {
+  total: number;
+  buying: number;
+  selling: number;
+  facebook: number;
+  today: number;
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export function PostsManagement({ posts, totalPosts = 0, socketConnected = false, onRefresh, userRole = 'admin' }: PostsManagementProps) {
@@ -53,6 +62,10 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
   const [filterType, setFilterType] = useState('all');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // State cho thống kê từ database
+  const [dbStats, setDbStats] = useState<PostsStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   
   // State cho dialog thêm khách hàng tiềm năng
   const [showAddLeadDialog, setShowAddLeadDialog] = useState(false);
@@ -80,6 +93,24 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
 
   // List of users for assignment dropdown
   const [usersList, setUsersList] = useState<Array<any>>([]);
+
+  // Fetch thống kê từ database
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        setStatsLoading(true);
+        const data = await fetchPostsStats();
+        if (data.success && data.stats) {
+          setDbStats(data.stats);
+        }
+      } catch (err) {
+        console.error('Failed to fetch posts stats:', err);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    loadStats();
+  }, [posts]); // Reload stats khi posts thay đổi
 
   useEffect(() => {
     (async () => {
@@ -353,14 +384,24 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
       </header>
 
       <div className="p-8">
-        {/* Stats Cards */}
+        {/* Stats Cards - Hiển thị số liệu thực từ database */}
         <div className="grid grid-cols-5 gap-6 mb-6">
           <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-blue-700">{t('posts.totalPosts')}</CardTitle>
             </CardHeader>
             <CardContent>
+<<<<<<< Updated upstream
               <div className="text-3xl font-bold text-blue-900">{totalPosts}</div>
+=======
+              {statsLoading ? (
+                <div className="h-8 bg-blue-200 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-blue-900">
+                  {dbStats?.total?.toLocaleString() || posts.length}
+                </div>
+              )}
+>>>>>>> Stashed changes
             </CardContent>
           </Card>
 
@@ -369,9 +410,13 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
               <CardTitle className="text-sm text-green-700">{t('posts.buying')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-900">
-                {posts.filter(p => p.type === 'Buying').length}
-              </div>
+              {statsLoading ? (
+                <div className="h-8 bg-green-200 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-green-900">
+                  {dbStats?.buying?.toLocaleString() || posts.filter(p => p.type === 'Buying').length}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -380,9 +425,13 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
               <CardTitle className="text-sm text-orange-700">{t('posts.selling')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-orange-900">
-                {posts.filter(p => p.type === 'Selling').length}
-              </div>
+              {statsLoading ? (
+                <div className="h-8 bg-orange-200 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-orange-900">
+                  {dbStats?.selling?.toLocaleString() || posts.filter(p => p.type === 'Selling').length}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -391,9 +440,13 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
               <CardTitle className="text-sm text-purple-700">Facebook</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-purple-900">
-                {posts.filter(p => p.platform === 'Facebook').length}
-              </div>
+              {statsLoading ? (
+                <div className="h-8 bg-purple-200 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-purple-900">
+                  {dbStats?.facebook?.toLocaleString() || posts.filter(p => p.platform === 'Facebook').length}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -402,7 +455,13 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
               <CardTitle className="text-sm text-pink-700">{t('posts.today')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-pink-900">{todayPostsCount}</div>
+              {statsLoading ? (
+                <div className="h-8 bg-pink-200 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-pink-900">
+                  {dbStats?.today?.toLocaleString() || todayPostsCount}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

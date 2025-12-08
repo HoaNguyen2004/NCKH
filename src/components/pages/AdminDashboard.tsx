@@ -1,5 +1,7 @@
-import { Users, Activity, Database, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Activity, Database, TrendingUp, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { fetchPostsStats, getToken } from '../../utils/api';
 import {
   Card,
   CardContent,
@@ -24,6 +26,26 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const { t } = useLanguage();
+  const [totalPosts, setTotalPosts] = useState<number>(0);
+  const [postsLoading, setPostsLoading] = useState(true);
+
+  // Fetch total posts từ database
+  useEffect(() => {
+    const loadPostsStats = async () => {
+      try {
+        setPostsLoading(true);
+        const data = await fetchPostsStats();
+        if (data.success && data.stats) {
+          setTotalPosts(data.stats.total || 0);
+        }
+      } catch (err) {
+        console.error('Failed to fetch posts stats:', err);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+    loadPostsStats();
+  }, []);
   
   const systemStats = [
     { label: t('admin.totalUsers'), value: '247', change: '+12%', icon: Users, color: 'blue' },
@@ -71,8 +93,29 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       </header>
 
       <div className="p-8">
-        {/* System Stats */}
-        <div className="grid grid-cols-4 gap-6 mb-6">
+        {/* Total Posts Card */}
+        <div className="grid grid-cols-5 gap-6 mb-6">
+          {/* Card Tổng bài đăng */}
+          <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm text-indigo-700">{t('admin.totalPosts') || 'Tổng bài đăng'}</CardTitle>
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600">
+                  <FileText className="w-5 h-5" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {postsLoading ? (
+                <div className="h-8 bg-indigo-200 rounded animate-pulse"></div>
+              ) : (
+                <div className="text-3xl font-bold text-indigo-900">{totalPosts.toLocaleString()}</div>
+              )}
+              <div className="text-sm text-indigo-600 mt-1">Bài đăng trong hệ thống</div>
+            </CardContent>
+          </Card>
+
+          {/* System Stats */}
           {systemStats.map((stat, idx) => {
             const Icon = stat.icon;
             return (
