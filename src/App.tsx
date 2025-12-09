@@ -37,8 +37,8 @@ type UiRole = 'admin' | 'manager' | 'sales';
 // Map role lưu trong MongoDB -> role dùng để hiển thị dashboard
 function mapBackendRoleToUiRole(role?: string | null): UiRole {
   if (role === 'admin') return 'admin';
-  if (role === 'sales') return 'sales';
-  // Tất cả role khác (manager, user, ...) đều vào trang Manager
+  if (role === 'sales' || role === 'student') return 'sales'; // student được quyền như sales
+  // Các role còn lại (manager, smb, user, ...) vào trang Manager
   return 'manager';
 }
 

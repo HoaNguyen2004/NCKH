@@ -40,9 +40,21 @@ async function seedDefaultRoles() {
       permissions: ['users.read', 'reports.read', 'leads.read', 'leads.write']
     },
     {
+      key: 'smb',
+      name: 'SMB Owner',
+      description: 'Chủ cửa hàng nhỏ (quyền như Manager)',
+      permissions: ['users.read', 'reports.read', 'leads.read', 'leads.write']
+    },
+    {
       key: 'sales',
       name: 'Sales',
       description: 'Nhân viên kinh doanh',
+      permissions: ['leads.read', 'leads.write']
+    },
+    {
+      key: 'student',
+      name: 'IT Student',
+      description: 'Sinh viên IT (quyền như Sales)',
       permissions: ['leads.read', 'leads.write']
     },
     {

@@ -7,9 +7,9 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Áp dụng cho toàn bộ routes dưới đây: yêu cầu đăng nhập + phải là admin hoặc manager
+// Áp dụng cho toàn bộ routes dưới đây: yêu cầu đăng nhập + phải là admin, manager hoặc smb owner
 router.use(requireAuth);
-router.use(requireRole(['admin', 'manager']));
+router.use(requireRole(['admin', 'manager', 'smb']));
 
 // GET /api/users - Lấy tất cả người dùng + số bài đã quét
 router.get('/', async (req, res) => {

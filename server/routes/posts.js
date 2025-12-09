@@ -51,10 +51,10 @@ module.exports = function(io) {
           const payload = jwt.verify(token, JWT_SECRET);
           const user = await User.findById(payload.userId).select('role email');
 
-          if (user && user.role === 'sales') {
-            // Sales chỉ thấy bài đăng được gán cho họ (assignedTo chứa userId)
-            filter.assignedTo = { $in: [user._id] };
-            console.log(`🔒 Sales user ${user.email} - chỉ thấy bài đăng được gán cho họ`);
+          if (user && (user.role === 'sales' || user.role === 'student')) { 
+            // Sales hoặc Student chỉ thấy bài đăng được gán cho họ (assignedTo chứa userId)
+              filter.assignedTo = { $in: [user._id] };
+            console.log(`🔒 ${user.role} user ${user.email} - chỉ thấy bài đăng được gán cho họ`);
           } else if (user && (user.role === 'admin' || user.role === 'manager')) {
             // Admin và Manager thấy tất cả bài đăng
             console.log(`👑 ${user.role} user ${user.email} - showing all posts`);
@@ -111,10 +111,10 @@ module.exports = function(io) {
           const payload = jwt.verify(token, JWT_SECRET);
           const user = await User.findById(payload.userId).select('role email');
 
-          if (user && user.role === 'sales') {
-            // Sales chỉ thấy stats của bài được gán cho họ
+          if (user && (user.role === 'sales' || user.role === 'student')) {
+            // Sales hoặc Student chỉ thấy stats của bài được gán cho họ
             baseFilter = { assignedTo: { $in: [user._id] } };
-            console.log(`🔒 Sales stats for ${user.email} - chỉ đếm bài được gán`);
+            console.log(`🔒 ${user.role} stats for ${user.email} - chỉ đếm bài được gán`);
           }
         } catch (authErr) {
           console.log('⚠️ Auth check failed for stats:', authErr.message);
@@ -388,8 +388,8 @@ module.exports = function(io) {
   // ==========================================
   router.delete('/:id', requireAuth, async (req, res) => {
     try {
-      // Chỉ admin và manager mới được xóa posts
-      if (!['admin', 'manager'].includes(req.user.role)) {
+      // Chỉ admin, manager hoặc smb mới được xóa posts
+      if (!['admin', 'manager', 'smb'].includes(req.user.role)) {
         return res.status(403).json({ success: false, message: 'Không có quyền xóa bài đăng' });
       }
 
