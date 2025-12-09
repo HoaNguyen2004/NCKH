@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Play, Loader2, CheckCircle, AlertCircle, RefreshCw, Users, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -71,6 +71,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const [groupSelectorPage, setGroupSelectorPage] = useState(1);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [scrapePriority, setScrapePriority] = useState<'high' | 'medium' | 'low'>('medium');
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
   const groupsPerPage = 10;
 
   // Kiểm tra trạng thái server khi component mount
@@ -128,6 +129,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setShowGroupSelector(true);
     setGroupSelectorPage(1);
     setSelectedGroupIds([]);
+    setGroupSearchQuery('');
   };
 
   // Toggle chọn nhóm
@@ -141,9 +143,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
   // Chọn tất cả nhóm trong trang hiện tại
   const handleSelectAllInPage = () => {
-    const startIdx = (groupSelectorPage - 1) * groupsPerPage;
-    const endIdx = startIdx + groupsPerPage;
-    const pageGroupIds = savedGroups.slice(startIdx, endIdx).map(g => g._id);
+    const pageGroupIds = paginatedGroups.map(g => g._id);
     
     const allSelected = pageGroupIds.every(id => selectedGroupIds.includes(id));
     
@@ -355,9 +355,20 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     setIsLoading(false);
   };
 
+  // Lọc nhóm theo từ khóa tìm kiếm
+  const filteredSavedGroups = useMemo(() => {
+    if (!groupSearchQuery.trim()) return savedGroups;
+    const query = groupSearchQuery.toLowerCase().trim();
+    return savedGroups.filter(group => 
+      group.name.toLowerCase().includes(query) ||
+      group.url.toLowerCase().includes(query) ||
+      (group.keywords && group.keywords.some(kw => kw.toLowerCase().includes(query)))
+    );
+  }, [savedGroups, groupSearchQuery]);
+
   // Tính toán phân trang cho popup nhóm
-  const totalGroupPages = Math.ceil(savedGroups.length / groupsPerPage);
-  const paginatedGroups = savedGroups.slice(
+  const totalGroupPages = Math.ceil(filteredSavedGroups.length / groupsPerPage);
+  const paginatedGroups = filteredSavedGroups.slice(
     (groupSelectorPage - 1) * groupsPerPage,
     groupSelectorPage * groupsPerPage
   );
@@ -808,8 +819,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
       {/* Dialog chọn nhóm đã quét */}
       <Dialog open={showGroupSelector} onOpenChange={setShowGroupSelector}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-purple-600" />
               Chọn nhóm đã quét
@@ -820,76 +831,106 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
           </DialogHeader>
 
           {isLoadingGroups ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center flex-1">
               <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
             </div>
           ) : savedGroups.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center flex-1 flex flex-col items-center justify-center">
               <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-gray-500">Chưa có nhóm nào được quét</p>
               <p className="text-sm text-gray-400">Hãy quét nhóm từ Search Mode trước</p>
             </div>
           ) : (
-            <>
+            <div className="flex-1 flex flex-col overflow-hidden px-6 py-4">
+              {/* Thanh tìm kiếm */}
+              <div className="flex items-center gap-4 mb-4 shrink-0">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Tìm kiếm nhóm theo tên, URL hoặc từ khóa..."
+                    value={groupSearchQuery}
+                    onChange={(e) => {
+                      setGroupSearchQuery(e.target.value);
+                      setGroupSelectorPage(1);
+                    }}
+                    className="pl-10 border-2"
+                  />
+                </div>
+                <Badge variant="secondary" className="shrink-0 px-3 py-1.5">
+                  Tìm thấy: {filteredSavedGroups.length} nhóm
+                </Badge>
+              </div>
+
               {/* Header với nút chọn tất cả */}
-              <div className="flex items-center justify-between py-2 border-b">
+              <div className="flex items-center justify-between py-2 border-b shrink-0">
                 <div className="flex items-center gap-2">
                   <Checkbox 
-                    checked={paginatedGroups.every(g => selectedGroupIds.includes(g._id))}
+                    checked={paginatedGroups.length > 0 && paginatedGroups.every(g => selectedGroupIds.includes(g._id))}
                     onCheckedChange={handleSelectAllInPage}
                   />
                   <span className="text-sm text-gray-600">
                     Chọn tất cả trang này ({paginatedGroups.length})
                   </span>
                 </div>
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                   Đã chọn: {selectedGroupIds.length}/{savedGroups.length}
                 </Badge>
               </div>
 
-              {/* Danh sách nhóm */}
-              <div className="flex-1 overflow-y-auto py-2 space-y-2">
-                {paginatedGroups.map((group) => (
-                  <div
-                    key={group._id}
-                    className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedGroupIds.includes(group._id) 
-                        ? 'bg-purple-50 border-purple-300' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                    onClick={() => handleToggleGroup(group._id)}
-                  >
-                    <Checkbox 
-                      checked={selectedGroupIds.includes(group._id)}
-                      onCheckedChange={() => handleToggleGroup(group._id)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{group.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{group.url}</p>
-                      {group.keywords && group.keywords.length > 0 && (
-                        <div className="flex gap-1 mt-1 flex-wrap">
-                          {group.keywords.slice(0, 3).map((kw, i) => (
-                            <Badge key={i} variant="outline" className="text-xs py-0">
-                              {kw}
-                            </Badge>
-                          ))}
-                          {group.keywords.length > 3 && (
-                            <Badge variant="outline" className="text-xs py-0">
-                              +{group.keywords.length - 3}
-                            </Badge>
+              {/* Danh sách nhóm - chia 2 cột 50:50 */}
+              <div className="flex-1 overflow-y-auto py-3">
+                {filteredSavedGroups.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Search className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                    <p className="text-gray-500">Không tìm thấy nhóm nào phù hợp</p>
+                    <p className="text-sm text-gray-400">Thử từ khóa khác</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {paginatedGroups.map((group) => (
+                      <div
+                        key={group._id}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
+                          selectedGroupIds.includes(group._id) 
+                            ? 'bg-purple-50 border-purple-400 shadow-sm' 
+                            : 'hover:bg-gray-50 hover:border-gray-300'
+                        }`}
+                        onClick={() => handleToggleGroup(group._id)}
+                      >
+                        <Checkbox 
+                          checked={selectedGroupIds.includes(group._id)}
+                          onCheckedChange={() => handleToggleGroup(group._id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate text-sm">{group.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{group.url}</p>
+                          {group.keywords && group.keywords.length > 0 && (
+                            <div className="flex gap-1 mt-1.5 flex-wrap">
+                              {group.keywords.slice(0, 3).map((kw, i) => (
+                                <Badge key={i} variant="outline" className="text-xs py-0 px-1.5">
+                                  {kw}
+                                </Badge>
+                              ))}
+                              {group.keywords.length > 3 && (
+                                <Badge variant="outline" className="text-xs py-0 px-1.5 bg-gray-50">
+                                  +{group.keywords.length - 3}
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Phân trang */}
               {totalGroupPages > 1 && (
-                <div className="flex items-center justify-between pt-4 border-t">
+                <div className="flex items-center justify-between pt-4 border-t shrink-0">
                   <div className="text-sm text-gray-600">
-                    Trang {groupSelectorPage}/{totalGroupPages} • {savedGroups.length} nhóm
+                    Trang {groupSelectorPage}/{totalGroupPages} • {filteredSavedGroups.length} nhóm
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -900,7 +941,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
-                    <div className="px-3 py-1 bg-gray-100 rounded text-sm">
+                    <div className="px-3 py-1 bg-gray-100 rounded text-sm font-medium">
                       {groupSelectorPage}/{totalGroupPages}
                     </div>
                     <Button
@@ -914,10 +955,10 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="px-6 py-4 border-t shrink-0 gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setShowGroupSelector(false)}>
               Hủy
             </Button>

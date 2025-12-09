@@ -75,7 +75,7 @@ router.post('/', async (req, res) => {
       notes,
     } = req.body;
 
-    if (!name || !phone || !email || !type) {
+    if (!name || !type) {
       return res
         .status(400)
         .json({ success: false, message: 'Thiếu thông tin bắt buộc' });

@@ -29,6 +29,7 @@ module.exports = function(io) {
         platform, 
         status, 
         keyword,
+        excludeArchived,
         limit = 200, 
         skip = 0,
         sort = '-createdAt'
@@ -37,7 +38,14 @@ module.exports = function(io) {
       const filter = {};
       if (type && type !== 'all') filter.type = type;
       if (platform && platform !== 'all') filter.platform = platform;
-      if (status && status !== 'all') filter.status = status;
+      
+      // Nếu excludeArchived=true, loại bỏ các bài đã lưu trữ
+      if (excludeArchived === 'true') {
+        filter.status = { $ne: 'archived' };
+      } else if (status && status !== 'all') {
+        filter.status = status;
+      }
+      
       if (keyword) filter.keyword = { $regex: keyword, $options: 'i' };
 
       // Kiểm tra nếu có user đăng nhập và phân quyền theo role

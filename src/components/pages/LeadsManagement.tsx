@@ -90,8 +90,8 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
   };
 
   const handleAddLead = async () => {
-    if (!formData.name || !formData.phone || !formData.email) {
-      alert('Vui lòng nhập đầy đủ thông tin');
+    if (!formData.name) {
+      alert('Vui lòng nhập tên khách hàng');
       return;
     }
 
@@ -146,8 +146,8 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
   };
 
   const handleUpdateLead = async () => {
-    if (!formData.name || !formData.phone || !formData.email) {
-      alert('Vui lòng nhập đầy đủ thông tin');
+    if (!formData.name) {
+      alert('Vui lòng nhập tên khách hàng');
       return;
     }
 

@@ -120,12 +120,13 @@ export default function App() {
   // SOCKET.IO CONNECTION & REAL-TIME UPDATES
   // ==========================================
 
-  // Fetch posts từ API (với auth token)
+  // Fetch posts từ API (với auth token) - chỉ lấy bài chưa lưu trữ
   const fetchPosts = useCallback(async () => {
     try {
-      console.log(`📡 Fetching posts from ${API_URL}/posts`);
+      console.log(`📡 Fetching posts from ${API_URL}/posts (excluding archived)`);
       const token = getToken();
-      const response = await fetch(`${API_URL}/posts?limit=20000`, {
+      // Lấy tất cả bài đăng trừ những bài đã archived
+      const response = await fetch(`${API_URL}/posts?limit=20000&excludeArchived=true`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
@@ -138,35 +139,38 @@ export default function App() {
 
       if (data.success && data.posts) {
         // Chuyển đổi từ database format sang frontend format
-        const formattedPosts = data.posts.map((post: any) => {
-          const createdAt = post.createdAt ? new Date(post.createdAt) : new Date();
-          return {
-            id: post._id || post.id,
-            _id: post._id || post.id, // Giữ _id để dùng cho API calls
-            content: post.title || post.content || '',
-            fullContent: post.fullContent || post.title || post.content || '',
-            type: post.type || 'Unknown',
-            platform: post.platform || 'Facebook',
-            confidence:
-              typeof post.confidence === 'number'
-                ? post.confidence + '%'
-                : post.confidence || '85%',
-            time: createdAt.toLocaleTimeString('vi-VN'),
-            date: createdAt.toLocaleDateString('vi-VN'),
-            author: post.author || 'Unknown',
-            price: post.price || 0,
-            location: post.location || 'Việt Nam',
-            category: post.category || 'Khác',
-            status: post.status || 'new',
-            url: post.url,
-            image: post.image,
-            assignedTo: post.assignedTo || [],
-          };
-        });
+        // Lọc bỏ các bài đã archived ở frontend (phòng trường hợp backend chưa filter)
+        const formattedPosts = data.posts
+          .filter((post: any) => post.status !== 'archived')
+          .map((post: any) => {
+            const createdAt = post.createdAt ? new Date(post.createdAt) : new Date();
+            return {
+              id: post._id || post.id,
+              _id: post._id || post.id, // Giữ _id để dùng cho API calls
+              content: post.title || post.content || '',
+              fullContent: post.fullContent || post.title || post.content || '',
+              type: post.type || 'Unknown',
+              platform: post.platform || 'Facebook',
+              confidence:
+                typeof post.confidence === 'number'
+                  ? post.confidence + '%'
+                  : post.confidence || '85%',
+              time: createdAt.toLocaleTimeString('vi-VN'),
+              date: createdAt.toLocaleDateString('vi-VN'),
+              author: post.author || 'Unknown',
+              price: post.price || 0,
+              location: post.location || 'Việt Nam',
+              category: post.category || 'Khác',
+              status: post.status || 'new',
+              url: post.url,
+              image: post.image,
+              assignedTo: post.assignedTo || [],
+            };
+          });
         setPosts(formattedPosts);
         setTotalPosts(data.total || formattedPosts.length);
         console.log(
-          `✅ Loaded ${formattedPosts.length} posts from database (total: ${data.total})`
+          `✅ Loaded ${formattedPosts.length} active posts from database (total: ${data.total})`
         );
       } else {
         console.warn('⚠️ API returned no posts:', data);
