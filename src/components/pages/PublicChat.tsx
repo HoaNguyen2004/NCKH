@@ -20,6 +20,7 @@ export function PublicChat({ leadId }: PublicChatProps) {
   const socketRef = useRef<Socket | null>(null);
   const messageIdsRef = useRef<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const env = (import.meta as any)?.env || {};
@@ -162,11 +163,36 @@ export function PublicChat({ leadId }: PublicChatProps) {
     };
   }, [leadId]);
 
-  // Auto-scroll when messages change
+  // Auto-scroll to bottom when new message arrives (tin nhắn mới ở dưới cùng như Facebook)
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
+    if (messages.length === 0) return;
+
+    // Sử dụng setTimeout để đảm bảo DOM đã render xong
+    const scrollToBottom = () => {
+      try {
+        if (messagesContainerRef.current) {
+          const container = messagesContainerRef.current;
+          // Scroll xuống dưới cùng để hiển thị tin nhắn mới nhất
+          container.scrollTop = container.scrollHeight;
+        }
+        // Backup: scroll vào element cuối
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    // Scroll ngay lập tức và sau một chút để đảm bảo
+    scrollToBottom();
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    const timeoutId2 = setTimeout(scrollToBottom, 200);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(timeoutId2);
+    };
   }, [messages]);
 
   const handleSendMessage = async () => {
@@ -250,7 +276,7 @@ export function PublicChat({ leadId }: PublicChatProps) {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
-        <Card className="h-[calc(100vh-2rem)] flex flex-col">
+        <Card className="h-[calc(100vh-2rem)] flex flex-col" style={{ minHeight: 0 }}>
           {/* Header */}
           <div className="p-4 border-b border-gray-200 bg-white flex items-start justify-between gap-4">
             <div>
@@ -270,7 +296,16 @@ export function PublicChat({ leadId }: PublicChatProps) {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
+            style={{
+              scrollBehavior: 'smooth',
+              minHeight: 0,
+              maxHeight: '100%',
+              height: '100%'
+            }}
+          >
             {messages.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
                 Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!
