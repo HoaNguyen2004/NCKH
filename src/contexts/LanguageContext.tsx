@@ -321,21 +321,25 @@ const translations = {
     'scraper.feedModeTitle': 'Feed Mode',
     'scraper.feedModeDesc': 'Cào feed + lọc',
     'scraper.step2SearchTitle': 'Bước 2: Quét theo Search',
-
+'scraper.step2SearchDesc': 'Nhập link Group/Marketplace và từ khóa để tìm kiếm',
+    'scraper.groupLinkLabel': 'Link Group hoặc Marketplace',
     'scraper.keywordsLabel': 'Từ khóa (mỗi dòng 1 từ khóa)',
+    'scraper.searchButtonIdle': '🔍 Quét Search',
     'scraper.searchButtonLoading': 'Đang quét Search...',
     'scraper.step2FeedTitle': 'Bước 2: Cào Feed',
     'scraper.feedLinkLabel': 'Link Feed',
     'scraper.scrollLabel': 'Số lần cuộn trang',
     'scraper.scrollMin': '5 (Nhanh)',
     'scraper.scrollMax': '30 (Nhiều)',
-
+'scraper.step2FeedTitle': 'Bước 2: Cào Feed',
+    'scraper.step2FeedDesc': 'Vào trang feed và cuộn để load tất cả bài viết, AI sẽ tự động phân loại',
     'scraper.serverOnline': 'Server Online',
     'scraper.serverOffline': 'Server Offline',
     'scraper.serverChecking': 'Đang kiểm tra...',
     'scraper.offlineTitle': 'Backend server không hoạt động',
     'scraper.offlineDesc': 'Hãy chạy backend server trước khi sử dụng tính năng này:',
-    
+    'scraper.feedButtonIdle': '🚀 Quét Feed',
+    'scraper.feedButtonLoading': 'Đang quét Feed...',
     // Research Page
     'research.title': 'Nghiên cứu thị trường',
     'research.subtitle': 'Phân tích xu hướng và insights thị trường',

@@ -568,36 +568,41 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Chọn nhóm đã quét */}
+                {/* Nhập URL nhóm hoặc chọn từ danh sách */}
                 <div className="space-y-2">
-                  <Label>Chọn nhóm để quét</Label>
+                  <Label>Link nhóm Facebook (hoặc chọn từ danh sách đã quét)</Label>
+                  <Textarea
+                    placeholder="https://www.facebook.com/groups/123456789&#10;https://www.facebook.com/groups/987654321&#10;(Mỗi link 1 dòng)"
+                    rows={3}
+                    value={feedUrl}
+                    onChange={(e) => setFeedUrl(e.target.value)}
+                    className="border-2"
+                  />
                   <div className="flex flex-wrap gap-2">
                     <Button 
                       variant="outline" 
                       onClick={handleOpenGroupSelector}
-                      className="flex-1 h-12 border-2 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"
+                      className="flex-1 h-10 border-2 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"
                     >
-                      <Users className="w-5 h-5 mr-2" />
+                      <Users className="w-4 h-4 mr-2" />
                       Chọn từ nhóm đã quét ({savedGroups.length > 0 ? savedGroups.length : '...'})
                     </Button>
+                    {feedUrl && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setFeedUrl('')}
+                        className="h-10 px-3 text-gray-500 hover:text-red-500 hover:border-red-300"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Xóa
+                      </Button>
+                    )}
                   </div>
                   {feedUrl && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border-2 border-gray-200">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-700">Đã chọn:</span>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setFeedUrl('')}
-                          className="h-6 px-2 text-gray-400 hover:text-red-500"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-600 whitespace-pre-line max-h-20 overflow-y-auto">
-                        {feedUrl.split('\n').length} nhóm
-                      </p>
-                    </div>
+                    <p className="text-xs text-green-600">
+                      ✓ Đã chọn {feedUrl.split('\n').filter(u => u.trim()).length} nhóm
+                    </p>
                   )}
                 </div>
 
@@ -649,7 +654,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 <div className="pt-2">
                   <Button 
                     onClick={handleScrapeFeed} 
-                    disabled={isLoading || serverStatus === 'offline' || !feedUrl}
+                    disabled={isLoading || serverStatus === 'offline'}
                     className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:opacity-50"
                   >
                     {isLoading ? (
@@ -664,6 +669,11 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                       </>
                     )}
                   </Button>
+                  {!feedUrl && (
+                    <p className="text-xs text-amber-600 mt-2 text-center">
+                      ⚠️ Vui lòng nhập link nhóm hoặc chọn từ danh sách đã quét
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

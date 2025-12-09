@@ -754,10 +754,237 @@ async function scrapeFeedByKeywords(email, feedUrl, keywords, scrollCount = 10) 
   return uniqueItems;
 }
 
+/**
+ * Quét danh sách hội nhóm liên quan tới từ khóa
+ * Tìm kiếm trên Facebook để lấy danh sách các group liên quan
+ */
+async function scrapeGroupsByKeywords(email, keywords, location = '') {
+  const cookiePath = getCookiePath(email);
+  if (!fs.existsSync(cookiePath)) throw new Error("NO_COOKIE");
+
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: [
+      "--start-maximized", 
+      "--no-sandbox", 
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled"
+    ],
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1920, height: 1080 });
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  );
+
+  const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf-8"));
+  await page.setCookie(...cookies);
+
+  let allGroups = [];
+  const seenUrls = new Set();
+
+  for (const kw of keywords) {
+    const searchQuery = location ? `${kw} ${location}` : kw;
+    console.log(`\n🔍 Đang tìm nhóm với từ khóa: "${searchQuery}" ...`);
+
+    try {
+      // Tìm kiếm nhóm trên Facebook
+      const searchUrl = `https://www.facebook.com/search/groups/?q=${encodeURIComponent(searchQuery)}`;
+      console.log(`   📍 URL: ${searchUrl}`);
+      
+      await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60000 });
+      
+      if (page.url().includes("login")) {
+        await browser.close();
+        throw new Error("COOKIE_INVALID");
+      }
+
+      await delay(3000);
+
+      // Cuộn trang để load thêm kết quả
+      console.log("   ⏳ Đang cuộn trang để load kết quả...");
+      for (let i = 0; i < 3; i++) {
+        await page.evaluate(() => window.scrollBy({ top: 1000, behavior: 'smooth' }));
+        console.log(`   ⬇️ Scroll lần ${i + 1}/3...`);
+        await delay(2000);
+      }
+
+      // Lấy danh sách nhóm từ DOM
+      const groups = await page.evaluate((currentKw) => {
+        const results = [];
+        
+        // Tìm các link đến group
+        const groupLinks = document.querySelectorAll('a[href*="/groups/"]');
+        
+        groupLinks.forEach((link) => {
+          const href = link.getAttribute('href');
+          if (!href || href.includes('/groups/search') || href.includes('/groups/feed')) return;
+          
+          // Lấy tên nhóm - thường là text trong link hoặc element con
+          let name = '';
+          
+          // Thử lấy từ span có role="text"
+          const textSpan = link.querySelector('span');
+          if (textSpan) {
+            name = textSpan.innerText || textSpan.textContent || '';
+          }
+          
+          // Nếu không có, lấy text content của link
+          if (!name) {
+            name = link.innerText || link.textContent || '';
+          }
+          
+          // Clean name
+          name = name.split('\n')[0].trim();
+          
+          if (name && name.length > 2 && name.length < 200) {
+            // Normalize URL
+            let url = href;
+            if (url.startsWith('/')) {
+              url = 'https://www.facebook.com' + url;
+            }
+            
+            // Clean URL
+            url = url.split('?')[0].replace(/\/$/, '');
+            
+            // Chỉ lấy URL nhóm hợp lệ
+            if (url.includes('/groups/') && !url.endsWith('/groups')) {
+              results.push({
+                name: name,
+                url: url,
+                keyword: currentKw
+              });
+            }
+          }
+        });
+        
+        return results;
+      }, kw);
+
+      console.log(`   ✅ Tìm thấy ${groups.length} nhóm cho từ khóa "${kw}"`);
+
+      // Deduplicate và thêm vào kết quả
+      groups.forEach((g) => {
+        if (!seenUrls.has(g.url)) {
+          seenUrls.add(g.url);
+          allGroups.push({
+            ...g,
+            keywords: [kw],
+            location: location
+          });
+        } else {
+          // Cập nhật keywords cho nhóm đã có
+          const existing = allGroups.find(x => x.url === g.url);
+          if (existing && !existing.keywords.includes(kw)) {
+            existing.keywords.push(kw);
+          }
+        }
+      });
+
+    } catch (err) {
+      console.error(`   ❌ Lỗi xử lý từ khóa "${kw}":`, err.message);
+      if (err.message === 'COOKIE_INVALID' || err.message === 'NO_COOKIE') {
+        throw err;
+      }
+    }
+  }
+
+  await browser.close();
+  
+  console.log(`\n🏁 TỔNG KẾT: Tìm thấy ${allGroups.length} nhóm duy nhất.`);
+  return allGroups;
+}
+
+/**
+ * Lấy thông tin 1 nhóm từ URL (tên nhóm)
+ */
+async function getGroupInfoByUrl(email, url) {
+  const cookiePath = getCookiePath(email);
+  if (!fs.existsSync(cookiePath)) throw new Error("NO_COOKIE");
+
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: [
+      "--start-maximized", 
+      "--no-sandbox", 
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled"
+    ],
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1920, height: 1080 });
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  );
+
+  const cookies = JSON.parse(fs.readFileSync(cookiePath, "utf-8"));
+  await page.setCookie(...cookies);
+
+  console.log(`\n🔍 Đang lấy thông tin nhóm: ${url}`);
+
+  try {
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+    
+    if (page.url().includes("login")) {
+      await browser.close();
+      throw new Error("COOKIE_INVALID");
+    }
+
+    await delay(2000);
+
+    // Lấy tên nhóm từ DOM
+    const groupInfo = await page.evaluate(() => {
+      // Thử nhiều selector khác nhau
+      const selectors = [
+        'h1 span',
+        'h1',
+        '[role="main"] h1',
+        'a[href*="/groups/"] span',
+        'div[role="banner"] h1'
+      ];
+      
+      let name = '';
+      
+      for (const selector of selectors) {
+        const el = document.querySelector(selector);
+        if (el) {
+          name = el.innerText || el.textContent || '';
+          name = name.split('\n')[0].trim();
+          if (name && name.length > 2) break;
+        }
+      }
+      
+      // Fallback: lấy từ title
+      if (!name) {
+        name = document.title.replace(' | Facebook', '').trim();
+      }
+      
+      return { name };
+    });
+
+    await browser.close();
+    
+    console.log(`   ✅ Tên nhóm: ${groupInfo.name}`);
+    return {
+      name: groupInfo.name || 'Unknown Group',
+      url: url
+    };
+
+  } catch (err) {
+    await browser.close();
+    console.error(`   ❌ Lỗi:`, err.message);
+    throw err;
+  }
+}
+
 module.exports = {
   initLoginAndSaveCookies,
   scrapeWithSearch,
   scrapeFeedByKeywords,
-  getCookiePath
+  getCookiePath,
+  scrapeGroupsByKeywords,
+  getGroupInfoByUrl
 };
 
