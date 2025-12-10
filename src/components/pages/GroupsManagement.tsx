@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Users, Search as SearchIcon, Globe2, Trash2, Plus, ExternalLink, RefreshCw } from 'lucide-react';
+import { Users, Search as SearchIcon, Globe2, Trash2, Plus, ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
@@ -13,7 +13,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from '../ui/dialog';
-import { ScrollArea } from '../ui/scroll-area';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
 import { getToken } from '../../utils/api';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -33,6 +40,10 @@ export function GroupsManagement() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+
+  // State cho phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const groupsPerPage = 15;
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addEmail, setAddEmail] = useState('');
@@ -87,6 +98,30 @@ export function GroupsManagement() {
       );
     });
   }, [groups, search]);
+
+  // Tính toán phân trang
+  const totalPages = Math.ceil(filteredGroups.length / groupsPerPage);
+  const startIndex = (currentPage - 1) * groupsPerPage;
+  const endIndex = startIndex + groupsPerPage;
+  const currentGroups = filteredGroups.slice(startIndex, endIndex);
+
+  // Reset về trang 1 khi filter thay đổi
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Hàm chuyển trang
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   const handleDeleteGroup = async (id: string) => {
     if (!window.confirm(t('groups.deleteConfirm'))) return;
@@ -268,69 +303,141 @@ export function GroupsManagement() {
                 {errorMessage}
               </div>
             )}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,3fr)_minmax(0,2fr)_80px] bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500">
-                <div>{t('groups.name')}</div>
-                <div>{t('groups.url')}</div>
-                <div>{t('groups.location')}</div>
-                <div className="text-right">Actions</div>
+            {loading ? (
+              <div className="p-6 text-center text-gray-500 text-sm">
+                Đang tải danh sách nhóm...
               </div>
-              <ScrollArea className="max-h-[480px]">
-                {loading ? (
-                  <div className="p-6 text-center text-gray-500 text-sm">
-                    Đang tải danh sách nhóm...
-                  </div>
-                ) : filteredGroups.length === 0 ? (
-                  <div className="p-6 text-center text-gray-400 text-sm">
-                    Chưa có nhóm nào. Hãy quét dữ liệu nhóm hoặc thêm thủ công.
-                  </div>
-                ) : (
-                  <div>
-                    {filteredGroups.map((g) => (
-                      <div
-                        key={g._id}
-                        className="grid grid-cols-[minmax(0,3fr)_minmax(0,3fr)_minmax(0,2fr)_80px] px-4 py-2 text-sm border-t border-gray-100 items-center hover:bg-gray-50"
+            ) : filteredGroups.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <div className="text-gray-400 mb-2">Chưa có nhóm nào</div>
+                <div className="text-gray-400 text-sm">Hãy quét dữ liệu nhóm hoặc thêm thủ công.</div>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table className="w-full table-auto">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[200px] whitespace-nowrap">{t('groups.name')}</TableHead>
+                        <TableHead className="min-w-[250px] whitespace-nowrap">{t('groups.url')}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t('groups.location')}</TableHead>
+                        <TableHead className="whitespace-nowrap">Từ khóa</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Hành động</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentGroups.map((g) => (
+                        <TableRow key={g._id} className="hover:bg-gray-50">
+                          <TableCell className="min-w-[200px]">
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                              <span className="truncate font-medium" title={g.name}>
+                                {g.name}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="min-w-[250px] max-w-[300px]">
+                            <a
+                              href={g.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="truncate text-blue-600 hover:underline flex items-center gap-1"
+                              title={g.url}
+                            >
+                              <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{g.url}</span>
+                            </a>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Globe2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                              <span className="truncate" title={g.location}>
+                                {g.location || '—'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {g.keywords && g.keywords.length > 0 ? (
+                                g.keywords.slice(0, 3).map((kw, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {kw}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-gray-400 text-sm">—</span>
+                              )}
+                              {g.keywords && g.keywords.length > 3 && (
+                                <Badge variant="outline" className="text-xs bg-gray-100">
+                                  +{g.keywords.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => window.open(g.url, '_blank')}
+                                title="Mở nhóm"
+                              >
+                                <ExternalLink className="w-4 h-4 text-blue-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteGroup(g._id)}
+                                title="Xóa nhóm"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Phân trang */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="text-sm text-gray-600">
+                      Hiển thị {startIndex + 1} - {Math.min(endIndex, filteredGroups.length)} trong tổng số {filteredGroups.length} nhóm
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1"
                       >
-                        <div className="truncate flex items-center gap-2">
-                          <Users className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                          <span className="truncate" title={g.name}>
-                            {g.name}
-                          </span>
-                        </div>
-                        <div className="truncate flex items-center gap-2">
-                          <ExternalLink className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <a
-                            href={g.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="truncate text-blue-600 hover:underline"
-                            title={g.url}
-                          >
-                            {g.url}
-                          </a>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Globe2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <span className="truncate" title={g.location}>
-                            {g.location || '—'}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteGroup(g._id)}
-                            title="Xóa nhóm"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
+                        <ChevronLeft className="w-4 h-4" />
+                        Trước
+                      </Button>
+                      <div className="flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-md">
+                        <span className="font-medium text-gray-900">{currentPage}</span>
+                        <span className="text-gray-500">/</span>
+                        <span className="text-gray-600">{totalPages}</span>
                       </div>
-                    ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="flex items-center gap-1"
+                      >
+                        Sau
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 )}
-              </ScrollArea>
-            </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
