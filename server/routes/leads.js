@@ -75,18 +75,57 @@ router.post('/', async (req, res) => {
       notes,
     } = req.body;
 
-    if (!name || !type) {
+    // Log để debug
+    console.log('📥 POST /api/leads - Received data:', {
+      name: name ? `"${name}"` : 'empty',
+      phone: phone ? `"${phone}"` : 'empty',
+      email: email ? `"${email}"` : 'empty',
+      location: location ? `"${location}"` : 'empty',
+      interest: interest ? `"${interest}"` : 'empty',
+      type: type || 'empty',
+      priority: priority || 'empty',
+      source: source || 'empty',
+    });
+
+    // Chỉ kiểm tra các trường bắt buộc: name, interest, type, priority, source
+    // Trim để loại bỏ khoảng trắng thừa
+    const trimmedName = (name || '').trim();
+    const trimmedInterest = (interest || '').trim();
+
+    console.log('🔍 Validation check:', {
+      trimmedName: trimmedName ? `"${trimmedName}"` : 'empty',
+      trimmedInterest: trimmedInterest ? `"${trimmedInterest}"` : 'empty',
+      type: type || 'empty',
+      priority: priority || 'empty',
+      source: source || 'empty',
+    });
+
+    if (!trimmedName || !trimmedInterest || !type || !priority || !source) {
+      const missingFields = [];
+      if (!trimmedName) missingFields.push('Tên khách hàng');
+      if (!trimmedInterest) missingFields.push('Sản phẩm quan tâm');
+      if (!type) missingFields.push('Loại');
+      if (!priority) missingFields.push('Ưu tiên');
+      if (!source) missingFields.push('Nguồn');
+
+      console.log('❌ Validation failed - Missing fields:', missingFields);
+
       return res
         .status(400)
-        .json({ success: false, message: 'Thiếu thông tin bắt buộc' });
+        .json({
+          success: false,
+          message: `Thiếu thông tin bắt buộc: ${missingFields.join(', ')}`
+        });
     }
 
+    console.log('✅ Validation passed, creating lead...');
+
     const lead = await Lead.create({
-      name,
-      phone,
-      email,
+      name: trimmedName,
+      phone: phone || '',
+      email: email || '',
       location: location || '',
-      interest: interest || '',
+      interest: trimmedInterest,
       type,
       budget: budget || '',
       status: status || 'new',
