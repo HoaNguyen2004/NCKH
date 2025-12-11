@@ -21,6 +21,7 @@ import { History } from './components/pages/History';
 import { Scraper } from './components/pages/Scraper';
 import { GroupsManagement } from './components/pages/GroupsManagement';
 import { PublicChat } from './components/pages/PublicChat';
+import { SalesLog } from './components/pages/SalesLog';
 import {
   login as apiLogin,
   register as apiRegister,
@@ -631,6 +632,8 @@ export default function App() {
             onLeadIdCleared={() => setConversationLeadId(null)}
           />
         );
+      case 'sales-log':
+        return <SalesLog userRole={userRole} />;
       case 'reports':
         return <Reports posts={posts} />;
       case 'filter':

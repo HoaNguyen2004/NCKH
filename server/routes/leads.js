@@ -2,6 +2,8 @@
 const express = require('express');
 const Lead = require('../models/Lead');
 const Message = require('../models/Message');
+const SalesLog = require('../models/SalesLog');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -149,9 +151,12 @@ router.post('/', async (req, res) => {
  * PUT /api/leads/:id
  * Cập nhật khách hàng
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
   try {
-    const lead = await Lead.findByIdAndUpdate(req.params.id, req.body, {
+    const { newSalesLog, newSalesLogs, ...updateData } = req.body;
+    
+    // Cập nhật lead (loại bỏ newSalesLog và newSalesLogs khỏi updateData)
+    const lead = await Lead.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
     });
 
@@ -159,6 +164,34 @@ router.put('/:id', async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: 'Không tìm thấy khách hàng' });
+    }
+
+    // Xử lý mảng newSalesLogs (ưu tiên) hoặc newSalesLog đơn lẻ (backward compatibility)
+    const salesLogsToCreate = newSalesLogs || (newSalesLog ? [newSalesLog] : []);
+
+    if (salesLogsToCreate.length > 0) {
+      try {
+        // Lấy thông tin user từ token (requireAuth đã gắn req.user)
+        const currentUser = req.user;
+        
+        const salesLogEntries = salesLogsToCreate.map((log) => ({
+          leadId: lead._id,
+          leadName: lead.name,
+          caretaker: log.caretaker || currentUser?.fullName || currentUser?.email || '',
+          editTime: log.editTime ? new Date(log.editTime) : new Date(),
+          customerRequest: log.customerRequest || '',
+          conclusion: log.conclusion || '',
+          status: log.status || 'pending',
+          createdBy: currentUser?._id || null,
+          createdByEmail: currentUser?.email || '',
+        }));
+
+        await SalesLog.insertMany(salesLogEntries);
+        console.log(`✅ Created ${salesLogEntries.length} sales log entries for lead:`, lead._id);
+      } catch (salesLogErr) {
+        console.error('❌ Error creating sales logs:', salesLogErr);
+        // Không fail toàn bộ request nếu chỉ lỗi sales log
+      }
     }
 
     return res.json({

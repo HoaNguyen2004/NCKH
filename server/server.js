@@ -143,6 +143,7 @@ const startServer = async () => {
     app.use('/api/products', require('./routes/products'));
     app.use('/api/groups', require('./routes/groups'));   // 👈 từ file thứ 2
     app.use('/api/leads', require('./routes/leads'));
+    app.use('/api/sales-logs', require('./routes/sales-logs'));
     app.use('/api/reports', require('./routes/reports'));
 
     // Create HTTP server and attach Socket.IO for real-time
