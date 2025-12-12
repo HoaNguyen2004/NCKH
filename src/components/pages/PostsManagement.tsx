@@ -170,6 +170,8 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
       }
       // Xóa khỏi danh sách archived và refresh
       setArchivedPosts(prev => prev.filter(p => (p._id || p.id) !== id));
+      // Chuyển về tab Bài đăng và refresh
+      setActiveTab('active');
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Error restoring post', err);
@@ -310,8 +312,12 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
         alert('Lỗi khi lưu trữ bài đăng: ' + (j.message || 'Unknown error'));
         return;
       }
+      // Chuyển sang tab lưu trữ và refresh danh sách
+      setActiveTab('archived');
       // Refresh list if parent provided the handler
       if (onRefresh) onRefresh();
+      // Fetch lại danh sách archived
+      await fetchArchivedPosts();
     } catch (err) {
       console.error('Error archiving post', err);
       alert('Lỗi khi lưu trữ bài đăng');
@@ -338,6 +344,10 @@ export function PostsManagement({ posts, totalPosts = 0, socketConnected = false
         console.error('Failed to delete post', j);
         alert('Lỗi khi xóa bài đăng: ' + (j.message || 'Unknown error'));
         return;
+      }
+      // Nếu đang ở tab archived, refresh danh sách archived
+      if (activeTab === 'archived') {
+        await fetchArchivedPosts();
       }
       // Refresh list if parent provided the handler
       if (onRefresh) onRefresh();
