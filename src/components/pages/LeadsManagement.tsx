@@ -7,6 +7,8 @@ import {
   MapPin,
   Star,
   MessageSquare,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -43,6 +45,7 @@ import {
 } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getMe, getToken } from '../../utils/api';
 
 interface LeadsManagementProps {
   posts: any[];
@@ -53,6 +56,7 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
   const { t } = useLanguage();
 
   const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [copiedLeadId, setCopiedLeadId] = useState<string | null>(null);
@@ -73,9 +77,36 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
     notes: '',
   });
 
+  // Sales log form data for edit dialog - array of entries
+  const [salesLogEntries, setSalesLogEntries] = useState<Array<{
+    caretaker: string;
+    editTime: string;
+    customerRequest: string;
+    conclusion: string;
+  }>>([]);
+  
+  // Current user info for auto-filling caretaker
+  const [currentUser, setCurrentUser] = useState<{ fullName?: string; email?: string } | null>(null);
+
   useEffect(() => {
     fetchLeads();
+    // Load current user info
+    loadCurrentUser();
   }, []);
+
+  const loadCurrentUser = async () => {
+    try {
+      const result = await getMe();
+      if (result.success && result.user) {
+        setCurrentUser({
+          fullName: result.user.fullName || result.user.name || '',
+          email: result.user.email || '',
+        });
+      }
+    } catch (err) {
+      console.error('Error loading current user:', err);
+    }
+  };
 
   const fetchLeads = async () => {
     try {
@@ -90,19 +121,58 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
   };
 
   const handleAddLead = async () => {
-    if (!formData.name) {
-      alert('Vui lòng nhập tên khách hàng');
+    // Chỉ kiểm tra các trường bắt buộc: name, interest, type, priority, source
+    // Trim để loại bỏ khoảng trắng thừa
+    const name = (formData.name || '').trim();
+    const interest = (formData.interest || '').trim();
+
+    // Debug: log các giá trị để kiểm tra
+    console.log('🔍 Validating form data:', {
+      name: `"${name}"`,
+      interest: `"${interest}"`,
+      type: formData.type,
+      priority: formData.priority,
+      source: formData.source,
+      nameEmpty: !name,
+      interestEmpty: !interest,
+      typeEmpty: !formData.type,
+      priorityEmpty: !formData.priority,
+      sourceEmpty: !formData.source
+    });
+
+    if (!name || !interest || !formData.type || !formData.priority || !formData.source) {
+      const missingFields: string[] = [];
+      if (!name) missingFields.push('Tên khách hàng');
+      if (!interest) missingFields.push('Sản phẩm quan tâm');
+      if (!formData.type) missingFields.push('Loại');
+      if (!formData.priority) missingFields.push('Ưu tiên');
+      if (!formData.source) missingFields.push('Nguồn');
+
+      alert(`Vui lòng nhập đầy đủ thông tin bắt buộc (có dấu *)\n\nThiếu: ${missingFields.join(', ')}`);
       return;
     }
 
     try {
+      // Chuẩn bị dữ liệu để gửi (trim các trường text)
+      const dataToSend = {
+        ...formData,
+        name: (formData.name || '').trim(),
+        interest: (formData.interest || '').trim(),
+        phone: formData.phone || '',
+        email: formData.email || '',
+        location: formData.location || '',
+      };
+
+      console.log('📤 Sending data to backend:', dataToSend);
+
       const response = await fetch('http://localhost:5000/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
 
       const data = await response.json();
+      console.log('📥 Response from backend:', data);
       if (data.success) {
         alert('Thêm khách hàng thành công');
         setFormData({
@@ -128,7 +198,7 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
     }
   };
 
-  const handleEditLead = (lead: any) => {
+  const handleEditLead = async (lead: any) => {
     setEditingLeadId(lead._id);
     setFormData({
       name: lead.name,
@@ -142,37 +212,126 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
       source: lead.source,
       notes: lead.notes,
     });
+    
+    // Load existing sales logs for this lead
+    try {
+      const token = getToken();
+      const response = await fetch(`http://localhost:5000/api/sales-logs?leadId=${lead._id}`, {
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
+      const data = await response.json();
+      if (data.success && data.logs) {
+        const formattedEntries = data.logs.map((log: any) => ({
+          caretaker: log.caretaker || '',
+          editTime: log.editTime ? new Date(log.editTime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+          customerRequest: log.customerRequest || '',
+          conclusion: log.conclusion || '',
+        }));
+        setSalesLogEntries(formattedEntries);
+      } else {
+        setSalesLogEntries([]);
+      }
+    } catch (err) {
+      console.error('Error loading sales logs:', err);
+      setSalesLogEntries([]);
+    }
+    
     setShowEditDialog(true);
   };
 
+  const handleAddSalesLogEntry = () => {
+    // Auto-fill caretaker with current user's name or email
+    const caretakerName = currentUser?.fullName || currentUser?.email || '';
+    
+    setSalesLogEntries([
+      ...salesLogEntries,
+      {
+        caretaker: caretakerName,
+        editTime: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:mm
+        customerRequest: '',
+        conclusion: '',
+      },
+    ]);
+  };
+
+  const handleRemoveSalesLogEntry = (index: number) => {
+    setSalesLogEntries(salesLogEntries.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateSalesLogEntry = (index: number, field: string, value: string) => {
+    const updated = [...salesLogEntries];
+    updated[index] = { ...updated[index], [field]: value };
+    setSalesLogEntries(updated);
+  };
+
   const handleUpdateLead = async () => {
-    if (!formData.name) {
-      alert('Vui lòng nhập tên khách hàng');
+    // Chỉ kiểm tra các trường bắt buộc: name, interest, type, priority, source
+    // Trim để loại bỏ khoảng trắng thừa
+    const name = (formData.name || '').trim();
+    const interest = (formData.interest || '').trim();
+
+    if (!name || !interest || !formData.type || !formData.priority || !formData.source) {
+      alert('Vui lòng nhập đầy đủ thông tin bắt buộc (có dấu *)');
       return;
     }
 
     try {
+      // Prepare sales log entries - filter out empty entries
+      const validEntries = salesLogEntries.filter(
+        (entry) => entry.caretaker || entry.customerRequest || entry.conclusion
+      );
+      
+      const updateData = {
+        ...formData,
+        // Add new sales log entries if any exist
+        ...(validEntries.length > 0 && {
+          newSalesLogs: validEntries.map((entry) => ({
+            caretaker: entry.caretaker,
+            editTime: entry.editTime ? new Date(entry.editTime).toISOString() : new Date().toISOString(),
+            customerRequest: entry.customerRequest,
+            conclusion: entry.conclusion,
+            status: 'pending', // pending, approved, rejected
+          }))
+        })
+      };
+
+      console.log('📤 Updating lead with data:', {
+        leadId: editingLeadId,
+        validEntriesCount: validEntries.length,
+        salesLogEntries,
+        updateData
+      });
+
+      const token = getToken();
       const response = await fetch(
         `http://localhost:5000/api/leads/${editingLeadId}`,
         {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          },
+          body: JSON.stringify(updateData),
         }
       );
 
       const data = await response.json();
+      console.log('📥 Response from server:', data);
+      
       if (data.success) {
-        alert('Cập nhật khách hàng thành công');
+        alert('Cập nhật khách hàng thành công' + (validEntries.length > 0 ? ` và đã tạo ${validEntries.length} nhật ký sales` : ''));
         setShowEditDialog(false);
         setEditingLeadId(null);
+        setSalesLogEntries([]);
         fetchLeads();
       } else {
         alert(data.message || 'Lỗi khi cập nhật khách hàng');
       }
     } catch (err) {
-      console.error('Lỗi:', err);
-      alert('Lỗi khi cập nhật khách hàng');
+      console.error('❌ Lỗi khi cập nhật khách hàng:', err);
+      alert('Lỗi khi cập nhật khách hàng: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 
@@ -204,12 +363,12 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
     switch (status) {
       case 'new':
         return 'bg-blue-100 text-blue-700';
-      case 'contacted':
+      case 'potential':
         return 'bg-yellow-100 text-yellow-700';
-      case 'qualified':
+      case 'ready':
         return 'bg-green-100 text-green-700';
-      case 'lost':
-        return 'bg-red-100 text-red-700';
+      case 'purchased':
+        return 'bg-purple-100 text-purple-700';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -219,12 +378,12 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
     switch (status) {
       case 'new':
         return t('leads.status.new');
-      case 'contacted':
-        return t('leads.status.contacted');
-      case 'qualified':
-        return t('leads.status.qualified');
-      case 'lost':
-        return t('leads.status.lost');
+      case 'potential':
+        return t('leads.status.potential');
+      case 'ready':
+        return t('leads.status.ready');
+      case 'purchased':
+        return t('leads.status.purchased');
       default:
         return status;
     }
@@ -258,10 +417,40 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
     }
   };
 
-  const filteredLeads =
-    filterStatus === 'all'
-      ? leads
-      : leads.filter((l) => l.status === filterStatus);
+  // Filter leads by status and search query
+  const filteredLeads = leads.filter((lead) => {
+    // Filter by status
+    const statusMatch = filterStatus === 'all' || lead.status === filterStatus;
+
+    // Filter by search query
+    if (!searchQuery.trim()) {
+      return statusMatch;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const name = (lead.name || '').toLowerCase();
+    const phone = (lead.phone || '').toLowerCase();
+    const email = (lead.email || '').toLowerCase();
+    const location = (lead.location || '').toLowerCase();
+    const interest = (lead.interest || '').toLowerCase();
+    const notes = (lead.notes || '').toLowerCase();
+    const source = (lead.source || '').toLowerCase();
+    const type = (lead.type || '').toLowerCase();
+    const budget = (lead.budget || '').toLowerCase();
+
+    const searchMatch =
+      name.includes(query) ||
+      phone.includes(query) ||
+      email.includes(query) ||
+      location.includes(query) ||
+      interest.includes(query) ||
+      notes.includes(query) ||
+      source.includes(query) ||
+      type.includes(query) ||
+      budget.includes(query);
+
+    return statusMatch && searchMatch;
+  });
 
   return (
     <main className="flex-1 overflow-auto">
@@ -287,7 +476,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
               </DialogHeader>
               <div className="grid gap-4 py-4 max-h-[400px] overflow-y-auto">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Tên khách hàng</Label>
+                  <Label htmlFor="name">
+                    Tên khách hàng <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="name"
                     placeholder="Ví dụ: Nguyễn Văn A"
@@ -334,7 +525,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="interest">Sản phẩm quan tâm</Label>
+                  <Label htmlFor="interest">
+                    Sản phẩm quan tâm <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="interest"
                     placeholder="Ví dụ: Laptop Dell"
@@ -346,7 +539,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="type">Loại</Label>
+                    <Label htmlFor="type">
+                      Loại <span className="text-red-500">*</span>
+                    </Label>
                     <Select
                       value={formData.type}
                       onValueChange={(val) =>
@@ -363,7 +558,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="priority">Ưu tiên</Label>
+                    <Label htmlFor="priority">
+                      Ưu tiên <span className="text-red-500">*</span>
+                    </Label>
                     <Select
                       value={formData.priority}
                       onValueChange={(val) =>
@@ -393,7 +590,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="source">Nguồn</Label>
+                  <Label htmlFor="source">
+                    Nguồn <span className="text-red-500">*</span>
+                  </Label>
                   <Select
                     value={formData.source}
                     onValueChange={(val) =>
@@ -479,8 +678,8 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
+        <Card className="flex flex-col gap-0" style={{ minHeight: 0, height: '100%', maxHeight: '600px', overflow: 'hidden' }}>
+          <CardHeader className="flex-shrink-0">
             <div className="flex items-center justify-between">
               <CardTitle>{t('leads.title')}</CardTitle>
               <div className="flex items-center gap-3">
@@ -496,182 +695,188 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                     <SelectItem value="new">
                       {t('leads.status.new')}
                     </SelectItem>
-                    <SelectItem value="contacted">
-                      {t('leads.status.contacted')}
+                    <SelectItem value="potential">
+                      {t('leads.status.potential')}
                     </SelectItem>
-                    <SelectItem value="qualified">
-                      {t('leads.status.qualified')}
+                    <SelectItem value="ready">
+                      {t('leads.status.ready')}
                     </SelectItem>
-                    <SelectItem value="lost">
-                      {t('leads.status.lost')}
+                    <SelectItem value="purchased">
+                      {t('leads.status.purchased')}
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
-                    placeholder={t('leads.filter.placeholder')}
+                    placeholder="Tìm kiếm khách hàng..."
                     className="pl-10 w-64"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('leads.table.priority')}</TableHead>
-                  <TableHead>{t('leads.table.lead')}</TableHead>
-                  <TableHead>{t('leads.table.contact')}</TableHead>
-                  <TableHead>{t('leads.table.interest')}</TableHead>
-                  <TableHead>{t('leads.table.type')}</TableHead>
-                  <TableHead>{t('leads.table.budget')}</TableHead>
-                  <TableHead>{t('leads.table.status')}</TableHead>
-                  <TableHead>{t('leads.table.source')}</TableHead>
-                  <TableHead>{t('leads.table.notes')}</TableHead>
-                  <TableHead>{t('leads.table.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.map((lead) => {
-                  const leadId = lead._id || lead.id;
-                  return (
-                    <TableRow key={leadId}>
-                      <TableCell>
-                        <Star
-                          className={`w-5 h-5 ${getPriorityColor(
-                            lead.priority
-                          )} fill-current`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="text-gray-900">{lead.name}</div>
-                          <div className="flex items-center gap-1 text-sm text-gray-500">
-                            <MapPin className="w-3 h-3" />
-                            {lead.location}
+          <CardContent className="flex-1 overflow-y-auto p-0" style={{ minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+            <div className="p-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('leads.table.priority')}</TableHead>
+                    <TableHead>{t('leads.table.lead')}</TableHead>
+                    <TableHead>{t('leads.table.contact')}</TableHead>
+                    <TableHead>{t('leads.table.interest')}</TableHead>
+                    <TableHead>{t('leads.table.type')}</TableHead>
+                    <TableHead>{t('leads.table.budget')}</TableHead>
+                    <TableHead>{t('leads.table.status')}</TableHead>
+                    <TableHead>{t('leads.table.source')}</TableHead>
+                    <TableHead>{t('leads.table.notes')}</TableHead>
+                    <TableHead>{t('leads.table.actions')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.map((lead) => {
+                    const leadId = lead._id || lead.id;
+                    return (
+                      <TableRow key={leadId}>
+                        <TableCell>
+                          <Star
+                            className={`w-5 h-5 ${getPriorityColor(
+                              lead.priority
+                            )} fill-current`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="text-gray-900">{lead.name}</div>
+                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                              <MapPin className="w-3 h-3" />
+                              {lead.location}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Phone className="w-3 h-3" />
-                            {lead.phone}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Phone className="w-3 h-3" />
+                              {lead.phone}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Mail className="w-3 h-3" />
+                              {lead.email}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Mail className="w-3 h-3" />
-                            {lead.email}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{lead.interest}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            lead.type === 'Buying' ? 'default' : 'secondary'
-                          }
-                        >
-                          {lead.type === 'Buying'
-                            ? t('posts.buying')
-                            : t('posts.selling')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {lead.budget}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(lead.status)}>
-                          {getStatusLabel(lead.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {lead.source}
-                      </TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate text-sm text-gray-600">
-                          {lead.notes}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              console.log(
-                                '🔘 Chat button clicked for lead:',
-                                leadId,
-                                'Full lead:',
-                                lead
-                              );
-                              if (!leadId) {
-                                console.error(
-                                  '❌ Lead ID is missing!',
-                                  lead
-                                );
-                                alert(
-                                  'Không tìm thấy ID khách hàng. Vui lòng thử lại.'
-                                );
-                                return;
-                              }
-                              if (onNavigate) {
-                                console.log(
-                                  '✅ onNavigate available, navigating to conversations with leadId:',
-                                  leadId
-                                );
-                                onNavigate('conversations', { leadId });
-                              } else {
-                                console.warn(
-                                  '⚠️ onNavigate not available, falling back to copy link'
-                                );
-                                handleCopyChatLink(leadId);
-                              }
-                            }}
-                            title="Chuyển sang trang cuộc trò chuyện"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-1" />
-                            Chat
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditLead(lead)}
-                          >
-                            {t('common.edit')}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() =>
-                              handleDeleteLead(leadId as string)
+                        </TableCell>
+                        <TableCell>{lead.interest}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              lead.type === 'Buying' ? 'default' : 'secondary'
                             }
                           >
-                            {t('common.delete')}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                            {lead.type === 'Buying'
+                              ? t('posts.buying')
+                              : t('posts.selling')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {lead.budget}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(lead.status)}>
+                            {getStatusLabel(lead.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {lead.source}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="truncate text-sm text-gray-600">
+                            {lead.notes}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                console.log(
+                                  '🔘 Chat button clicked for lead:',
+                                  leadId,
+                                  'Full lead:',
+                                  lead
+                                );
+                                if (!leadId) {
+                                  console.error(
+                                    '❌ Lead ID is missing!',
+                                    lead
+                                  );
+                                  alert(
+                                    'Không tìm thấy ID khách hàng. Vui lòng thử lại.'
+                                  );
+                                  return;
+                                }
+                                if (onNavigate) {
+                                  console.log(
+                                    '✅ onNavigate available, navigating to conversations with leadId:',
+                                    leadId
+                                  );
+                                  onNavigate('conversations', { leadId });
+                                } else {
+                                  console.warn(
+                                    '⚠️ onNavigate not available, falling back to copy link'
+                                  );
+                                  handleCopyChatLink(leadId);
+                                }
+                              }}
+                              title="Chuyển sang trang cuộc trò chuyện"
+                            >
+                              <MessageSquare className="w-4 h-4 mr-1" />
+                              Chat
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditLead(lead)}
+                            >
+                              {t('common.edit')}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                handleDeleteLead(leadId as string)
+                              }
+                            >
+                              {t('common.delete')}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
         {/* Edit Lead Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-[525px]">
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{t('common.edit')}</DialogTitle>
               <DialogDescription>
                 Cập nhật thông tin khách hàng
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 max-h-[400px] overflow-y-auto">
+            <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="edit-name">Tên khách hàng</Label>
+                <Label htmlFor="edit-name">
+                  Tên khách hàng <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="edit-name"
                   placeholder="Ví dụ: Nguyễn Văn A"
@@ -718,7 +923,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-interest">Sản phẩm quan tâm</Label>
+                <Label htmlFor="edit-interest">
+                  Sản phẩm quan tâm <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="edit-interest"
                   placeholder="Ví dụ: Laptop Dell"
@@ -730,7 +937,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-type">Loại</Label>
+                  <Label htmlFor="edit-type">
+                    Loại <span className="text-red-500">*</span>
+                  </Label>
                   <Select
                     value={formData.type}
                     onValueChange={(val) =>
@@ -747,7 +956,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-priority">Ưu tiên</Label>
+                  <Label htmlFor="edit-priority">
+                    Ưu tiên <span className="text-red-500">*</span>
+                  </Label>
                   <Select
                     value={formData.priority}
                     onValueChange={(val) =>
@@ -777,7 +988,9 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="edit-source">Nguồn</Label>
+                <Label htmlFor="edit-source">
+                  Nguồn <span className="text-red-500">*</span>
+                </Label>
                 <Select
                   value={formData.source}
                   onValueChange={(val) =>
@@ -795,16 +1008,99 @@ export function LeadsManagement({ posts, onNavigate }: LeadsManagementProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-notes">Ghi chú</Label>
-                <Input
-                  id="edit-notes"
-                  placeholder="Thông tin thêm..."
-                  value={formData.notes}
-                  onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
-                  }
-                />
+
+              {/* Sales Log Section - Table Format */}
+              <div className="border-t pt-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-900">{t('salesLog.title')}</h4>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleAddSalesLogEntry}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Thêm dòng
+                  </Button>
+                </div>
+                
+                {salesLogEntries.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 text-sm">
+                    Chưa có nhật ký nào. Click "Thêm dòng" để thêm mới.
+                  </div>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[150px]">Người chăm sóc</TableHead>
+                          <TableHead className="w-[180px]">Ngày giờ</TableHead>
+                          <TableHead>Đề xuất của khách hàng</TableHead>
+                          <TableHead>Kết luận</TableHead>
+                          <TableHead className="w-[80px]">Thao tác</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {salesLogEntries.map((entry, index) => (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <Input
+                                placeholder={currentUser?.fullName || currentUser?.email || "Người chăm sóc..."}
+                                value={entry.caretaker}
+                                onChange={(e) =>
+                                  handleUpdateSalesLogEntry(index, 'caretaker', e.target.value)
+                                }
+                                className="h-8"
+                                title={entry.caretaker ? undefined : `Tự động điền từ tài khoản: ${currentUser?.fullName || currentUser?.email || 'Chưa đăng nhập'}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="datetime-local"
+                                value={entry.editTime}
+                                onChange={(e) =>
+                                  handleUpdateSalesLogEntry(index, 'editTime', e.target.value)
+                                }
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                placeholder="Đề xuất..."
+                                value={entry.customerRequest}
+                                onChange={(e) =>
+                                  handleUpdateSalesLogEntry(index, 'customerRequest', e.target.value)
+                                }
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                placeholder="Kết luận..."
+                                value={entry.conclusion}
+                                onChange={(e) =>
+                                  handleUpdateSalesLogEntry(index, 'conclusion', e.target.value)
+                                }
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRemoveSalesLogEntry(index)}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>

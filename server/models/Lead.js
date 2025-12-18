@@ -22,7 +22,7 @@ const leadSchema = new mongoose.Schema({
   type: { type: String, enum: ['buyer', 'seller', 'Buying', 'Selling'], default: 'buyer' },
   budget: { type: String, default: '' },
   budgetNumber: { type: Number, default: 0 },
-  status: { type: String, enum: ['new', 'contacted', 'qualified', 'lost'], default: 'new' },
+  status: { type: String, enum: ['new', 'potential', 'ready', 'purchased', 'contacted', 'qualified', 'lost'], default: 'new' },
   priority: { type: String, enum: ['high', 'medium', 'low'], default: 'medium' },
   urgency: { type: String, enum: ['high', 'medium', 'low'], default: 'medium' },
   requirements: { type: String, default: '' },

@@ -11,6 +11,8 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
+  LineChart,
+  Line,
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { Button } from '../ui/button';
@@ -29,6 +31,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { DateRangeDialog } from '../dialogs/DateRangeDialog';
 
 interface ReportsProps {
   posts: any[];
@@ -37,6 +40,8 @@ interface ReportsProps {
 export function Reports({ posts }: ReportsProps) {
   const { t } = useLanguage();
   const [exportFormat, setExportFormat] = useState('xlsx');
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [revenueData, setRevenueData] = useState<Array<{ date: string; revenue: number; profit: number; loss: number }>>([]);
 
   const stats = {
     totalPosts: posts.length,
@@ -65,6 +70,7 @@ export function Reports({ posts }: ReportsProps) {
     const reportData = [
       ['BÁO CÁO BÁN HÀNG & PHÂN TÍCH'],
       ['Ngày xuất:', new Date().toLocaleString('vi-VN')],
+      dateRange ? [`Khoảng thời gian: ${dateRange.start.toLocaleDateString('vi-VN')} - ${dateRange.end.toLocaleDateString('vi-VN')}`] : [],
       [],
       ['THỐNG KÊ CHUNG'],
       ['Chỉ số', 'Giá trị', 'Thay đổi'],
@@ -72,19 +78,80 @@ export function Reports({ posts }: ReportsProps) {
       ['Bài mua', stats.buyingPosts, '+8% so với tháng trước'],
       ['Bài bán', stats.sellingPosts, '+15% so với tháng trước'],
       ['Độ chính xác TB', `${stats.avgConfidence}%`, '+2% so với tháng trước'],
+      [],
+      ['BẢNG DOANH THU'],
+      ['Ngày', 'Doanh thu (VNĐ)', 'Lợi nhuận (VNĐ)', 'Thua lỗ (VNĐ)', 'Tổng (VNĐ)'],
     ];
 
+    // Thêm dữ liệu doanh thu
+    if (revenueData.length > 0) {
+      revenueData.forEach(item => {
+        const total = item.revenue + item.profit - item.loss;
+        reportData.push([
+          item.date,
+          item.revenue.toLocaleString('vi-VN'),
+          item.profit.toLocaleString('vi-VN'),
+          item.loss.toLocaleString('vi-VN'),
+          total.toLocaleString('vi-VN')
+        ]);
+      });
+    } else {
+      reportData.push(['Không có dữ liệu trong khoảng thời gian được chọn', '', '', '', '']);
+    }
+
+    // Tính tổng
+    const totalRevenue = revenueData.reduce((sum, item) => sum + item.revenue, 0);
+    const totalProfit = revenueData.reduce((sum, item) => sum + item.profit, 0);
+    const totalLoss = revenueData.reduce((sum, item) => sum + item.loss, 0);
+    const grandTotal = totalRevenue + totalProfit - totalLoss;
+
+    reportData.push([]);
+    reportData.push(['TỔNG CỘNG', totalRevenue.toLocaleString('vi-VN'), totalProfit.toLocaleString('vi-VN'), totalLoss.toLocaleString('vi-VN'), grandTotal.toLocaleString('vi-VN')]);
+
+    // Tạo sheet báo cáo
     const ws = XLSX.utils.aoa_to_sheet(reportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo');
 
-    ws['!cols'] = [
-      { wch: 30 },
-      { wch: 15 },
-      { wch: 30 }
+    // Tạo sheet biểu đồ doanh thu
+    const chartData = [
+      ['BIỂU ĐỒ DOANH THU & LỢI NHUẬN/THUA LỖ'],
+      [],
+      ['Ngày', 'Doanh thu', 'Lợi nhuận', 'Thua lỗ', 'Tổng'],
     ];
 
-    const fileName = `bao_cao_${new Date().toISOString().split('T')[0]}.xlsx`;
+    if (revenueData.length > 0) {
+      revenueData.forEach(item => {
+        const total = item.revenue + item.profit - item.loss;
+        chartData.push([
+          item.date,
+          item.revenue,
+          item.profit,
+          item.loss,
+          total
+        ]);
+      });
+    }
+
+    const wsChart = XLSX.utils.aoa_to_sheet(chartData);
+    XLSX.utils.book_append_sheet(wb, wsChart, 'Biểu đồ Doanh thu');
+
+    // Đặt độ rộng cột
+    ws['!cols'] = [
+      { wch: 30 },
+      { wch: 20 },
+      { wch: 20 }
+    ];
+
+    wsChart['!cols'] = [
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 }
+    ];
+
+    const fileName = `bao_cao_${dateRange ? `${dateRange.start.toISOString().split('T')[0]}_${dateRange.end.toISOString().split('T')[0]}` : new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
@@ -99,6 +166,57 @@ export function Reports({ posts }: ReportsProps) {
 
   const [categoryData, setCategoryData] = useState<Array<{ name: string; count: number; percentage: number }>>([]);
   const [locationData, setLocationData] = useState<Array<{ name: string; count: number; percentage: number }>>([]);
+
+  // Hàm tính doanh thu từ posts
+  const calculateRevenue = async (startDate?: Date, endDate?: Date) => {
+    try {
+      let filteredPosts = posts;
+      
+      if (startDate && endDate) {
+        filteredPosts = posts.filter((post: any) => {
+          const postDate = new Date(post.date || post.createdAt || Date.now());
+          return postDate >= startDate && postDate <= endDate;
+        });
+      }
+
+      // Tính doanh thu theo ngày
+      const revenueByDate: Record<string, { revenue: number; profit: number; loss: number }> = {};
+      
+      filteredPosts.forEach((post: any) => {
+        if (post.type === 'Selling' && post.price) {
+          const postDate = new Date(post.date || post.createdAt || Date.now());
+          const dateKey = postDate.toLocaleDateString('vi-VN');
+          
+          if (!revenueByDate[dateKey]) {
+            revenueByDate[dateKey] = { revenue: 0, profit: 0, loss: 0 };
+          }
+          
+          revenueByDate[dateKey].revenue += post.price || 0;
+          
+          // Giả sử lợi nhuận = 20% doanh thu, thua lỗ = 5% doanh thu (có thể điều chỉnh)
+          const estimatedProfit = (post.price || 0) * 0.2;
+          const estimatedLoss = (post.price || 0) * 0.05;
+          
+          revenueByDate[dateKey].profit += estimatedProfit;
+          revenueByDate[dateKey].loss += estimatedLoss;
+        }
+      });
+
+      // Chuyển đổi thành mảng và sắp xếp theo ngày
+      const revenueArray = Object.entries(revenueByDate)
+        .map(([date, data]) => ({
+          date,
+          revenue: data.revenue,
+          profit: data.profit,
+          loss: data.loss
+        }))
+        .sort((a, b) => new Date(a.date.split('/').reverse().join('-')).getTime() - new Date(b.date.split('/').reverse().join('-')).getTime());
+
+      setRevenueData(revenueArray);
+    } catch (err) {
+      console.error('Error calculating revenue', err);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -136,7 +254,21 @@ export function Reports({ posts }: ReportsProps) {
     };
 
     fetchData();
-  }, []);
+    calculateRevenue();
+  }, [posts]);
+
+  // Tính lại doanh thu khi date range thay đổi
+  useEffect(() => {
+    if (dateRange) {
+      calculateRevenue(dateRange.start, dateRange.end);
+    } else {
+      calculateRevenue();
+    }
+  }, [dateRange, posts]);
+
+  const handleDateRangeApply = (startDate: Date, endDate: Date) => {
+    setDateRange({ start: startDate, end: endDate });
+  };
 
   const CATEGORY_COLORS = ['#2563eb', '#0ea5a0', '#f97316', '#8b5cf6'];
   const LOCATION_COLOR = '#10b981';
@@ -161,10 +293,7 @@ export function Reports({ posts }: ReportsProps) {
                 <SelectItem value="custom">{t('reports.rangeCustom')}</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Calendar className="w-4 h-4 mr-2" />
-              {t('reports.pickDate')}
-            </Button>
+            <DateRangeDialog onApply={handleDateRangeApply} />
             <Select value={exportFormat} onValueChange={setExportFormat}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -334,6 +463,55 @@ export function Reports({ posts }: ReportsProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* Biểu đồ Doanh thu */}
+        {revenueData.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Biểu đồ Doanh thu & Lợi nhuận/Thua lỗ</CardTitle>
+              <CardDescription>
+                {dateRange 
+                  ? `Từ ${dateRange.start.toLocaleDateString('vi-VN')} đến ${dateRange.end.toLocaleDateString('vi-VN')}`
+                  : 'Tất cả dữ liệu'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div style={{ height: 400 }}>
+                <ResponsiveContainer>
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <ReTooltip 
+                      formatter={(value: any) => `${value.toLocaleString('vi-VN')} VNĐ`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="#2563eb" 
+                      strokeWidth={2}
+                      name="Doanh thu"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="profit" 
+                      stroke="#10b981" 
+                      strokeWidth={2}
+                      name="Lợi nhuận"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="loss" 
+                      stroke="#ef4444" 
+                      strokeWidth={2}
+                      name="Thua lỗ"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </main>
   );

@@ -12,7 +12,12 @@ import {
 
 import { io, Socket } from 'socket.io-client';
 
-export function Conversations() {
+interface ConversationsProps {
+  initialLeadId?: string | null;
+  onLeadIdCleared?: () => void;
+}
+
+export function Conversations({ initialLeadId, onLeadIdCleared }: ConversationsProps) {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -46,7 +51,26 @@ export function Conversations() {
           // Sort by lastContactDate descending (newest first)
           convs.sort((a, b) => b.lastContactDate.getTime() - a.lastContactDate.getTime());
           setConversations(convs);
-          if (convs.length > 0 && !selectedChat) setSelectedChat(convs[0].id);
+
+          // Nếu có initialLeadId, ưu tiên chọn lead đó
+          if (initialLeadId) {
+            const leadIdString = String(initialLeadId);
+            const foundConv = convs.find(c => String(c.id) === leadIdString);
+            if (foundConv) {
+              console.log('✅ Found initial lead, selecting:', leadIdString);
+              setSelectedChat(leadIdString);
+              // Clear initialLeadId sau khi đã sử dụng
+              if (onLeadIdCleared) {
+                onLeadIdCleared();
+              }
+            } else {
+              console.warn('⚠️ Initial lead not found in conversations, selecting first one');
+              if (convs.length > 0 && !selectedChat) setSelectedChat(convs[0].id);
+            }
+          } else if (convs.length > 0 && !selectedChat) {
+            // Nếu không có initialLeadId, chọn conversation đầu tiên
+            setSelectedChat(convs[0].id);
+          }
         }
       } catch (err) {
         console.error('Lỗi khi tải conversations', err);
@@ -135,6 +159,24 @@ export function Conversations() {
       }
     };
   }, []);
+
+  // Xử lý khi initialLeadId thay đổi (khi navigate từ LeadsManagement)
+  useEffect(() => {
+    if (initialLeadId && conversations.length > 0) {
+      const leadIdString = String(initialLeadId);
+      const foundConv = conversations.find(c => String(c.id) === leadIdString);
+      if (foundConv) {
+        console.log('✅ Setting selectedChat from initialLeadId:', leadIdString);
+        setSelectedChat(leadIdString);
+        // Clear initialLeadId sau khi đã sử dụng
+        if (onLeadIdCleared) {
+          onLeadIdCleared();
+        }
+      } else {
+        console.warn('⚠️ Initial lead not found in conversations list:', leadIdString);
+      }
+    }
+  }, [initialLeadId, conversations, onLeadIdCleared]);
 
   // load messages for the selected chat
   useEffect(() => {
