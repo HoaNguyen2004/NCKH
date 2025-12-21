@@ -2,17 +2,20 @@
 const express = require('express');
 const SalesLog = require('../models/SalesLog');
 const Lead = require('../models/Lead');
+const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 /**
  * GET /api/sales-logs
- * Lấy tất cả nhật ký sales
+ * Lấy tất cả nhật ký sales (có phân quyền theo role)
  * Query params: status (pending, approved, rejected), leadId, createdBy
  */
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const { status, leadId, createdBy } = req.query;
+    const userRole = req.user.role;
+    const userId = req.user._id;
     
     const filter = {};
     if (status && status !== 'all') {
@@ -24,6 +27,12 @@ router.get('/', async (req, res) => {
     if (createdBy) {
       filter.createdBy = createdBy;
     }
+    
+    // Sales chỉ thấy nhật ký của mình
+    if (userRole === 'sales') {
+      filter.createdBy = userId;
+    }
+    // Admin và manager thấy tất cả
 
     const logs = await SalesLog.find(filter)
       .sort({ createdAt: -1 })
@@ -59,7 +68,7 @@ router.get('/', async (req, res) => {
  * GET /api/sales-logs/:id
  * Lấy chi tiết 1 nhật ký sales
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
     const log = await SalesLog.findById(req.params.id)
       .populate('leadId', 'name phone email')
@@ -70,6 +79,11 @@ router.get('/:id', async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: 'Không tìm thấy nhật ký' });
+    }
+
+    // Sales chỉ xem được nhật ký của mình
+    if (req.user.role === 'sales' && log.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
     }
 
     return res.json({ success: true, log });
@@ -83,7 +97,7 @@ router.get('/:id', async (req, res) => {
  * PUT /api/sales-logs/:id/review
  * Duyệt hoặc từ chối nhật ký sales (chỉ admin/manager)
  */
-router.put('/:id/review', async (req, res) => {
+router.put('/:id/review', requireAuth, requireRole(['admin', 'manager']), async (req, res) => {
   try {
     const { status, adminResponse } = req.body;
 
@@ -99,8 +113,7 @@ router.put('/:id/review', async (req, res) => {
         status,
         adminResponse: adminResponse || '',
         reviewedAt: new Date(),
-        // TODO: Lấy thông tin user từ token nếu có
-        // reviewedBy: req.user?._id,
+        reviewedBy: req.user._id,
       },
       { new: true }
     )
@@ -128,7 +141,7 @@ router.put('/:id/review', async (req, res) => {
  * DELETE /api/sales-logs/:id
  * Xóa nhật ký sales (chỉ admin)
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(['admin']), async (req, res) => {
   try {
     const log = await SalesLog.findByIdAndDelete(req.params.id);
 

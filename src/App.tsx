@@ -48,6 +48,7 @@ export default function App() {
   const [showRegister, setShowRegister] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [userRole, setUserRole] = useState<UiRole>('admin');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [totalPosts, setTotalPosts] = useState(0);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -74,6 +75,7 @@ export default function App() {
       setIsLoggedIn(true);
       setShowRegister(false);
       setUserRole(uiRole);
+      setCurrentUser(result.user);
 
       if (remember) {
         try {
@@ -524,6 +526,7 @@ export default function App() {
       setIsLoggedIn(true);
       setShowRegister(false);
       setUserRole(uiRole);
+      setCurrentUser(result.user);
 
       try {
         localStorage.setItem(
@@ -633,7 +636,7 @@ export default function App() {
           />
         );
       case 'sales-log':
-        return <SalesLog userRole={userRole} />;
+        return <SalesLog userRole={userRole} currentUserId={currentUser?._id} />;
       case 'reports':
         return <Reports posts={posts} />;
       case 'filter':

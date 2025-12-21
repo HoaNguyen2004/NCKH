@@ -41,6 +41,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getToken } from '../../utils/api';
 
 interface SalesLogEntry {
   _id: string;
@@ -75,7 +76,11 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
 
   const fetchSalesLogs = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/sales-logs');
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch('http://localhost:5000/api/sales-logs', { headers });
       const data = await response.json();
       if (data.success && data.logs) {
         setSalesLogs(data.logs);
@@ -113,9 +118,13 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
 
   const handleApprove = async (logId: string, approve: boolean) => {
     try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`http://localhost:5000/api/sales-logs/${logId}/review`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           status: approve ? 'approved' : 'rejected',
           adminResponse: adminResponse,
@@ -198,6 +207,11 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
     return statusMatch && searchMatch;
   });
 
+  // Get stats based on filtered logs (for sales, only their logs)
+  const statsLogs = userRole === 'sales' 
+    ? salesLogs.filter(log => log.createdBy === currentUserId)
+    : salesLogs;
+
   const canReview = userRole === 'admin' || userRole === 'manager';
 
   return (
@@ -219,7 +233,7 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
               <CardTitle className="text-sm font-medium text-gray-500">{t('salesLog.totalLogs')}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{salesLogs.length}</div>
+              <div className="text-3xl font-bold text-gray-900">{statsLogs.length}</div>
             </CardContent>
           </Card>
 
@@ -229,7 +243,7 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-yellow-600">
-                {salesLogs.filter((l) => l.status === 'pending').length}
+                {statsLogs.filter((l) => l.status === 'pending').length}
               </div>
             </CardContent>
           </Card>
@@ -240,7 +254,7 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">
-                {salesLogs.filter((l) => l.status === 'approved').length}
+                {statsLogs.filter((l) => l.status === 'approved').length}
               </div>
             </CardContent>
           </Card>
@@ -251,7 +265,7 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-red-600">
-                {salesLogs.filter((l) => l.status === 'rejected').length}
+                {statsLogs.filter((l) => l.status === 'rejected').length}
               </div>
             </CardContent>
           </Card>
@@ -375,60 +389,62 @@ export function SalesLog({ userRole, currentUserId }: SalesLogProps) {
         </Card>
       </div>
 
-      {/* Review Dialog */}
-      <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('salesLog.reviewDialogTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('salesLog.reviewDialogDesc')}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedLog && (
-            <div className="space-y-4 py-4">
-              <div>
-                <span className="font-medium">{t('salesLog.reviewCustomer')}:</span> {selectedLog.leadName}
+      {/* Review Dialog - Only for admin/manager */}
+      {canReview && (
+        <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('salesLog.reviewDialogTitle')}</DialogTitle>
+              <DialogDescription>
+                {t('salesLog.reviewDialogDesc')}
+              </DialogDescription>
+            </DialogHeader>
+            {selectedLog && (
+              <div className="space-y-4 py-4">
+                <div>
+                  <span className="font-medium">{t('salesLog.reviewCustomer')}:</span> {selectedLog.leadName}
+                </div>
+                <div>
+                  <span className="font-medium">{t('salesLog.reviewCaretaker')}:</span> {selectedLog.caretaker}
+                </div>
+                <div>
+                  <span className="font-medium">{t('salesLog.reviewRequest')}:</span> {selectedLog.customerRequest}
+                </div>
+                <div>
+                  <span className="font-medium">{t('salesLog.reviewConclusion')}:</span> {selectedLog.conclusion}
+                </div>
+                <div className="grid gap-2">
+                  <label className="font-medium">{t('salesLog.reviewAdminResponse')}:</label>
+                  <Input
+                    placeholder={t('salesLog.reviewAdminResponsePlaceholder')}
+                    value={adminResponse}
+                    onChange={(e) => setAdminResponse(e.target.value)}
+                  />
+                </div>
               </div>
-              <div>
-                <span className="font-medium">{t('salesLog.reviewCaretaker')}:</span> {selectedLog.caretaker}
-              </div>
-              <div>
-                <span className="font-medium">{t('salesLog.reviewRequest')}:</span> {selectedLog.customerRequest}
-              </div>
-              <div>
-                <span className="font-medium">{t('salesLog.reviewConclusion')}:</span> {selectedLog.conclusion}
-              </div>
-              <div className="grid gap-2">
-                <label className="font-medium">{t('salesLog.reviewAdminResponse')}:</label>
-                <Input
-                  placeholder={t('salesLog.reviewAdminResponsePlaceholder')}
-                  value={adminResponse}
-                  onChange={(e) => setAdminResponse(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResponseDialog(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => selectedLog && handleApprove(selectedLog._id, false)}
-            >
-              <XCircle className="w-4 h-4 mr-1" />
-              {t('salesLog.reject')}
-            </Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700"
-              onClick={() => selectedLog && handleApprove(selectedLog._id, true)}
-            >
-              <CheckCircle className="w-4 h-4 mr-1" />
-              {t('salesLog.approve')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowResponseDialog(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => selectedLog && handleApprove(selectedLog._id, false)}
+              >
+                <XCircle className="w-4 h-4 mr-1" />
+                {t('salesLog.reject')}
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => selectedLog && handleApprove(selectedLog._id, true)}
+              >
+                <CheckCircle className="w-4 h-4 mr-1" />
+                {t('salesLog.approve')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </main>
   );
 }

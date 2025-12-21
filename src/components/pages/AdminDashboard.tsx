@@ -1,5 +1,7 @@
 import { Users, Activity, Database, TrendingUp, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useState, useEffect } from 'react';
+import { getToken } from '../../utils/api';
 import {
   Card,
   CardContent,
@@ -25,26 +27,67 @@ interface AdminDashboardProps {
 export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   const { t } = useLanguage();
   
-  const systemStats = [
+  const [systemStats, setSystemStats] = useState([
     { label: t('admin.totalUsers'), value: '247', change: '+12%', icon: Users, color: 'blue' },
     { label: t('admin.activeSessions'), value: '89', change: '+5%', icon: Activity, color: 'green' },
     { label: t('admin.apiCalls'), value: '12.4K', change: '+18%', icon: Database, color: 'purple' },
     { label: t('admin.systemUptime'), value: '99.9%', change: '+0.1%', icon: TrendingUp, color: 'pink' },
-  ];
+  ]);
 
-  const systemHealth = [
+  const [systemHealth, setSystemHealth] = useState([
     { component: 'AI Model Server', status: 'healthy', uptime: '99.99%', response: '45ms' },
     { component: 'Database', status: 'healthy', uptime: '99.95%', response: '12ms' },
     { component: 'API Gateway', status: 'healthy', uptime: '99.98%', response: '8ms' },
     { component: 'Cache Server', status: 'warning', uptime: '98.50%', response: '125ms' },
-  ];
+  ]);
 
-  const recentActivities = [
+  const [recentActivities, setRecentActivities] = useState([
     { user: 'Nguyễn Văn A', action: 'Created new filter configuration', time: '2 phút trước', type: 'success' },
     { user: 'Trần Thị B', action: 'Updated AI model settings', time: '15 phút trước', type: 'info' },
     { user: 'System', action: 'Backup completed successfully', time: '1 giờ trước', type: 'success' },
     { user: 'Lê Văn C', action: 'Failed login attempt', time: '2 giờ trước', type: 'warning' },
-  ];
+  ]);
+
+  const [loading, setLoading] = useState(true);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const token = getToken();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reports/admin/dashboard`, { headers });
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          const { systemStats: stats, systemHealth: health, recentActivities: activities } = data.data;
+
+          // Update system stats with real data
+          setSystemStats(stats.map((stat: any) => ({
+            label: stat.label,
+            value: stat.value,
+            change: stat.change,
+            icon: stat.icon === 'Users' ? Users :
+                  stat.icon === 'Activity' ? Activity :
+                  stat.icon === 'Database' ? Database : TrendingUp,
+            color: stat.color
+          })));
+
+          setSystemHealth(health);
+          setRecentActivities(activities);
+        }
+      } catch (err) {
+        console.error('Failed to fetch admin dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const getColorClass = (color: string) => {
     const colors: Record<string, string> = {
@@ -73,25 +116,43 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       <div className="p-8">
         {/* System Stats */}
         <div className="grid grid-cols-4 gap-6 mb-6">
-          {systemStats.map((stat, idx) => {
-            const Icon = stat.icon;
-            return (
+          {loading ? (
+            // Loading skeleton
+            Array(4).fill(0).map((_, idx) => (
               <Card key={idx}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">{stat.label}</CardTitle>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getColorClass(stat.color)}`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl text-gray-900 mb-1">{stat.value}</div>
-                  <div className="text-sm text-green-600">↗ {stat.change} vs last month</div>
+                  <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
                 </CardContent>
               </Card>
-            );
-          })}
+            ))
+          ) : (
+            systemStats.map((stat, idx) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={idx}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm">{stat.label}</CardTitle>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getColorClass(stat.color)}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl text-gray-900 mb-1">{stat.value}</div>
+                    <div className="text-sm text-green-600">↗ {stat.change} vs last month</div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-6">

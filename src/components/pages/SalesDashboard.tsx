@@ -1,6 +1,8 @@
 import React from 'react';
 import { Target, MessageSquare, Phone, TrendingUp, Star, Clock } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useState, useEffect } from 'react';
+import { getToken } from '../../utils/api';
 import {
   Card,
   CardContent,
@@ -27,14 +29,14 @@ interface SalesDashboardProps {
 export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
   const { t } = useLanguage();
   
-  const salesMetrics = [
+  const [salesMetrics, setSalesMetrics] = useState([
     { label: t('sales.myLeads'), value: '45', change: '+8 today', icon: Target, color: 'blue' },
     { label: t('sales.activeChats'), value: '12', change: '3 unread', icon: MessageSquare, color: 'green' },
     { label: t('sales.callsMade'), value: '28', change: 'Today', icon: Phone, color: 'purple' },
     { label: t('sales.conversionRate'), value: '32%', change: '+5%', icon: TrendingUp, color: 'pink' },
-  ];
+  ]);
 
-  const urgentLeads = [
+  const [urgentLeads, setUrgentLeads] = useState([
     { 
       name: 'Nguyễn Minh Tuấn', 
       product: 'Laptop Dell', 
@@ -62,20 +64,62 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
       status: 'qualified',
       phone: '0909123456'
     },
-  ];
+  ]);
 
-  const recentChats = [
+  const [recentChats, setRecentChats] = useState([
     { name: 'Nguyễn Văn A', message: 'Laptop còn hàng không bạn?', time: '5 phút', unread: 2, online: true },
     { name: 'Trần Thị B', message: 'Máy em bán 12.5tr được không?', time: '15 phút', unread: 0, online: true },
     { name: 'Lê Văn C', message: 'Anh cho em xem máy được không?', time: '1 giờ', unread: 1, online: false },
-  ];
+  ]);
 
-  const todayTasks = [
+  const [todayTasks, setTodayTasks] = useState([
     { task: 'Follow up với Nguyễn Minh Tuấn', time: '10:00 AM', status: 'pending' },
     { task: 'Demo sản phẩm cho Trần Thu Hà', time: '2:00 PM', status: 'pending' },
     { task: 'Gọi điện cho 5 leads mới', time: '4:00 PM', status: 'pending' },
     { task: 'Cập nhật CRM', time: '5:00 PM', status: 'completed' },
-  ];
+  ]);
+
+  const [loading, setLoading] = useState(true);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const token = getToken();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reports/sales/dashboard`, { headers });
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          const { salesMetrics: metrics, urgentLeads: leads, recentChats: chats, todayTasks: tasks } = data.data;
+
+          // Update sales metrics with real data
+          setSalesMetrics(metrics.map((metric: any) => ({
+            label: metric.label,
+            value: metric.value,
+            change: metric.change,
+            icon: metric.icon === 'Target' ? Target :
+                  metric.icon === 'MessageSquare' ? MessageSquare :
+                  metric.icon === 'Phone' ? Phone : TrendingUp,
+            color: metric.color
+          })));
+
+          setUrgentLeads(leads);
+          setRecentChats(chats);
+          setTodayTasks(tasks);
+        }
+      } catch (err) {
+        console.error('Failed to fetch sales dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const getColorClass = (color: string) => {
     const colors: Record<string, string> = {
@@ -89,6 +133,15 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
 
   const getPriorityColor = (priority: string) => {
     return priority === 'high' ? 'text-red-600' : 'text-yellow-600';
+  };
+
+  const getTranslatedPriority = (priority: string) => {
+    switch (priority) {
+      case 'high': return t('priority.high');
+      case 'medium': return t('priority.medium');
+      case 'low': return t('priority.low');
+      default: return priority;
+    }
   };
 
   const getInitials = (name: string) => {
@@ -119,45 +172,63 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
       <div className="p-8">
         {/* Sales Metrics */}
         <div className="grid grid-cols-4 gap-6 mb-6">
-          {salesMetrics.map((metric, idx) => {
-            const Icon = metric.icon;
-            return (
+          {loading ? (
+            // Loading skeleton
+            Array(4).fill(0).map((_, idx) => (
               <Card key={idx}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">{metric.label}</CardTitle>
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getColorClass(metric.color)}`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl text-gray-900 mb-1">{metric.value}</div>
-                  <div className="text-sm text-gray-600">{metric.change}</div>
+                  <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
                 </CardContent>
               </Card>
-            );
-          })}
+            ))
+          ) : (
+            salesMetrics.map((metric, idx) => {
+              const Icon = metric.icon;
+              return (
+                <Card key={idx}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm">{metric.label}</CardTitle>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getColorClass(metric.color)}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl text-gray-900 mb-1">{metric.value}</div>
+                    <div className="text-sm text-gray-600">{metric.change}</div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-6">
           {/* Urgent Leads */}
           <Card className="col-span-2">
             <CardHeader>
-              <CardTitle>Urgent Leads - Action Required</CardTitle>
-              <CardDescription>High priority leads that need immediate attention</CardDescription>
+              <CardTitle>{t('sales.urgentLeads')}</CardTitle>
+              <CardDescription>{t('sales.urgentLeadsDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Lead</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Budget</TableHead>
-                    <TableHead>Last Contact</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableHead>{t('sales.table.priority')}</TableHead>
+                    <TableHead>{t('sales.table.lead')}</TableHead>
+                    <TableHead>{t('sales.table.product')}</TableHead>
+                    <TableHead>{t('sales.table.budget')}</TableHead>
+                    <TableHead>{t('sales.table.lastContact')}</TableHead>
+                    <TableHead>{t('sales.table.status')}</TableHead>
+                    <TableHead>{t('sales.table.action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -201,8 +272,8 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Recent Chats</CardTitle>
-                <CardDescription>Active conversations</CardDescription>
+                <CardTitle>{t('sales.recentChats')}</CardTitle>
+                <CardDescription>{t('sales.recentChatsDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -241,7 +312,7 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
             <Card>
               <CardHeader>
                 <CardTitle>{t('sales.todayTasks')}</CardTitle>
-                <CardDescription>Your schedule for today</CardDescription>
+                <CardDescription>{t('sales.todayTasksDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
