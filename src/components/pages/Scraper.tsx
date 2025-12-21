@@ -84,13 +84,13 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
+
       const res = await fetch(`${scraperUrl}/health`, {
         signal: controller.signal
       }).catch(() => null);
-      
+
       clearTimeout(timeoutId);
-      
+
       if (res && res.ok) {
         setServerStatus('online');
       } else {
@@ -134,8 +134,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
   // Toggle chọn nhóm
   const handleToggleGroup = (groupId: string) => {
-    setSelectedGroupIds(prev => 
-      prev.includes(groupId) 
+    setSelectedGroupIds(prev =>
+      prev.includes(groupId)
         ? prev.filter(id => id !== groupId)
         : [...prev, groupId]
     );
@@ -144,9 +144,9 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   // Chọn tất cả nhóm trong trang hiện tại
   const handleSelectAllInPage = () => {
     const pageGroupIds = paginatedGroups.map(g => g._id);
-    
+
     const allSelected = pageGroupIds.every(id => selectedGroupIds.includes(id));
-    
+
     if (allSelected) {
       setSelectedGroupIds(prev => prev.filter(id => !pageGroupIds.includes(id)));
     } else {
@@ -160,7 +160,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       .filter(g => selectedGroupIds.includes(g._id))
       .map(g => g.url)
       .join('\n');
-    
+
     if (selectedUrls) {
       setFeedUrl(selectedUrls);
     }
@@ -170,13 +170,13 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const handleLogin = async () => {
     if (!email) {
       setStatus('error');
-      setMessage('Vui lòng nhập email Facebook');
+      setMessage(t('scraper.enterFbEmail'));
       return;
     }
 
     setIsLoading(true);
     setStatus('idle');
-    setMessage('Đang mở Chrome để đăng nhập...');
+    setMessage(t('scraper.openingChrome'));
 
     try {
       const res = await fetch(`${scraperUrl}/init-login`, {
@@ -185,17 +185,17 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
         body: JSON.stringify({ email })
       });
       const data = await res.json();
-      
+
       if (data.ok) {
         setStatus('success');
-        setMessage(data.message || 'Đăng nhập thành công!');
+        setMessage(data.message || t('scraper.loginSuccess'));
       } else {
         setStatus('error');
-        setMessage(data.error || 'Lỗi đăng nhập');
+        setMessage(data.error || t('scraper.loginError'));
       }
     } catch (err) {
       setStatus('error');
-      setMessage(`Không thể kết nối đến scraper server (${scraperUrl}). Hãy kiểm tra server đang chạy.`);
+      setMessage(`${t('scraper.cannotConnectScraper')} (${scraperUrl}). ${t('scraper.checkServer')}`);
     }
 
     setIsLoading(false);
@@ -204,19 +204,19 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const handleSearch = async () => {
     if (!email || !url || !keywords) {
       setStatus('error');
-      setMessage('Vui lòng điền đầy đủ thông tin');
+      setMessage(t('scraper.fillAllInfo'));
       return;
     }
 
     setIsLoading(true);
     setStatus('idle');
-    setMessage('Đang quét dữ liệu và phân tích với AI...');
+    setMessage(t('scraper.scrapingAI'));
 
     try {
       const token = getToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      
+
       const res = await fetch(`${scraperUrl}/scrape-filter`, {
         method: 'POST',
         headers,
@@ -226,22 +226,22 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
       if (data.ok) {
         setResults(data.matched || []);
-        
+
         // Hiển thị kết quả đã lưu
-        const savedInfo = data.saved 
-          ? `\n✅ Đã lưu: ${data.saved.posts} bài đăng, ${data.saved.leads} khách hàng tiềm năng` 
+        const savedInfo = data.saved
+          ? `\n✅ ${t('scraper.savedInfo').replace('{posts}', data.saved.posts).replace('{leads}', data.saved.leads)}`
           : '';
-        
+
         setStatus('success');
-        setMessage(`Tìm thấy ${data.matched?.length || 0} bài viết!${savedInfo}`);
-        
+        setMessage(`${t('scraper.foundPosts').replace('{count}', data.matched?.length || 0)}${savedInfo}`);
+
         // Tự động chuyển sang trang bài đăng sau 2 giây
         if (data.saved?.posts > 0 && onNavigateToPosts) {
           setTimeout(() => onNavigateToPosts(), 2500);
         }
       } else {
         setStatus('error');
-        setMessage(data.error || 'Lỗi khi quét dữ liệu');
+        setMessage(data.error || t('scraper.errorScraping'));
       }
     } catch (err) {
       setStatus('error');
@@ -254,13 +254,13 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const handleSearchGroups = async () => {
     if (!email || !keywords) {
       setStatus('error');
-      setMessage('Vui lòng nhập email và từ khóa');
+      setMessage(t('scraper.enterEmailKeywords'));
       return;
     }
 
     setIsLoading(true);
     setStatus('idle');
-    setMessage('Đang quét danh sách hội nhóm liên quan tới từ khóa...');
+    setMessage(t('scraper.scanningGroups'));
 
     try {
       const token = getToken();
@@ -277,14 +277,14 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       if (data.ok) {
         setGroups(data.groups || []);
         setStatus('success');
-        setMessage(`Tìm thấy ${data.groups?.length || 0} hội nhóm liên quan tới từ khóa`);
+        setMessage(t('scraper.foundGroups').replace('{count}', data.groups?.length || 0));
       } else {
         setStatus('error');
-        setMessage(data.error || 'Lỗi khi quét danh sách hội nhóm');
+        setMessage(data.error || t('scraper.errorGroups'));
       }
     } catch (err) {
       setStatus('error');
-      setMessage('Không thể kết nối đến server (quét hội nhóm)');
+      setMessage(t('scraper.cannotConnectGroups'));
     }
 
     setIsLoading(false);
@@ -293,22 +293,23 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const handleScrapeFeed = async () => {
     if (!email || !feedUrl) {
       setStatus('error');
-      setMessage('Vui lòng điền đầy đủ thông tin (email và link feed)');
+      setMessage(t('scraper.fillEmailFeed'));
       return;
     }
 
     setIsLoading(true);
     setStatus('idle');
-    
+
     // Xử lý nhiều links nếu có
     const urls = feedUrl.split('\n').map(u => u.trim()).filter(u => u);
-    setMessage(`Đang quét ${urls.length} feed với mức độ ưu tiên ${scrapePriority === 'high' ? 'Cao' : scrapePriority === 'medium' ? 'Trung bình' : 'Thấp'}...`);
+    const priorityText = scrapePriority === 'high' ? t('scraper.priorityHigh') : scrapePriority === 'medium' ? t('scraper.priorityMedium') : t('scraper.priorityLow');
+    setMessage(t('scraper.scrapingFeeds').replace('{count}', String(urls.length)).replace('{priority}', priorityText));
 
     try {
       const token = getToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      
+
       let totalMatched: any[] = [];
       let totalSaved = { posts: 0, leads: 0 };
 
@@ -317,11 +318,11 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
         const res = await fetch(`${scraperUrl}/scrape-feed`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ 
-            email, 
-            feedUrl: singleUrl, 
+          body: JSON.stringify({
+            email,
+            feedUrl: singleUrl,
             scrollCount,
-            priority: scrapePriority 
+            priority: scrapePriority
           })
         });
         const data = await res.json();
@@ -336,14 +337,14 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
       }
 
       setResults(totalMatched);
-      
+
       const savedInfo = totalSaved.posts > 0
-        ? `\n✅ Đã lưu: ${totalSaved.posts} bài đăng, ${totalSaved.leads} khách hàng tiềm năng` 
+        ? `\n✅ ${t('scraper.savedInfo').replace('{posts}', String(totalSaved.posts)).replace('{leads}', String(totalSaved.leads))}`
         : '';
-      
+
       setStatus('success');
-      setMessage(`Tìm thấy ${totalMatched.length} bài viết từ ${urls.length} nhóm!${savedInfo}`);
-      
+      setMessage(`${t('scraper.foundPostsFromGroups').replace('{posts}', String(totalMatched.length)).replace('{groups}', String(urls.length))}${savedInfo}`);
+
       if (totalSaved.posts > 0 && onNavigateToPosts) {
         setTimeout(() => onNavigateToPosts(), 2500);
       }
@@ -359,7 +360,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
   const filteredSavedGroups = useMemo(() => {
     if (!groupSearchQuery.trim()) return savedGroups;
     const query = groupSearchQuery.toLowerCase().trim();
-    return savedGroups.filter(group => 
+    return savedGroups.filter(group =>
       group.name.toLowerCase().includes(query) ||
       group.url.toLowerCase().includes(query) ||
       (group.keywords && group.keywords.some(kw => kw.toLowerCase().includes(query)))
@@ -384,19 +385,17 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
           </div>
           <div className="flex items-center gap-2">
             {/* Server Status */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
-              serverStatus === 'online' ? 'bg-green-100 text-green-700' :
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${serverStatus === 'online' ? 'bg-green-100 text-green-700' :
               serverStatus === 'offline' ? 'bg-red-100 text-red-700' :
-              'bg-yellow-100 text-yellow-700'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                serverStatus === 'online' ? 'bg-green-500' :
+                'bg-yellow-100 text-yellow-700'
+              }`}>
+              <div className={`w-2 h-2 rounded-full ${serverStatus === 'online' ? 'bg-green-500' :
                 serverStatus === 'offline' ? 'bg-red-500' :
-                'bg-yellow-500 animate-pulse'
-              }`} />
+                  'bg-yellow-500 animate-pulse'
+                }`} />
               {serverStatus === 'online' ? t('scraper.serverOnline') :
-               serverStatus === 'offline' ? t('scraper.serverOffline') :
-               t('scraper.serverChecking')}
+                serverStatus === 'offline' ? t('scraper.serverOffline') :
+                  t('scraper.serverChecking')}
             </div>
             <Button variant="outline" onClick={checkServerStatus}>
               <RefreshCw className="w-4 h-4" />
@@ -422,11 +421,10 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
 
         {/* Status Message */}
         {message && (
-          <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
-            status === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+          <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${status === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
             status === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
-            'bg-blue-50 text-blue-800 border border-blue-200'
-          }`}>
+              'bg-blue-50 text-blue-800 border border-blue-200'
+            }`}>
             {status === 'success' && <CheckCircle className="w-5 h-5" />}
             {status === 'error' && <AlertCircle className="w-5 h-5" />}
             {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
@@ -458,8 +456,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   className="border-2"
                 />
               </div>
-              <Button 
-                onClick={handleLogin} 
+              <Button
+                onClick={handleLogin}
                 disabled={isLoading || serverStatus === 'offline'}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
@@ -481,11 +479,10 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setMode('search')}
-                  className={`p-4 rounded-lg border-2 text-center transition-all ${
-                    mode === 'search' 
-                      ? 'border-blue-500 bg-blue-50 shadow-md' 
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                  }`}
+                  className={`p-4 rounded-lg border-2 text-center transition-all ${mode === 'search'
+                    ? 'border-blue-500 bg-blue-50 shadow-md'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
+                    }`}
                 >
                   <div className="text-2xl mb-2">🔍</div>
                   <div className="font-semibold">{t('scraper.searchModeTitle')}</div>
@@ -493,11 +490,10 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 </button>
                 <button
                   onClick={() => setMode('feed')}
-                  className={`p-4 rounded-lg border-2 text-center transition-all ${
-                    mode === 'feed' 
-                      ? 'border-orange-500 bg-orange-50 shadow-md' 
-                      : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
-                  }`}
+                  className={`p-4 rounded-lg border-2 text-center transition-all ${mode === 'feed'
+                    ? 'border-orange-500 bg-orange-50 shadow-md'
+                    : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
+                    }`}
                 >
                   <div className="text-2xl mb-2">📰</div>
                   <div className="font-semibold">{t('scraper.feedModeTitle')}</div>
@@ -531,15 +527,15 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Địa điểm (tùy chọn)</Label>
+                  <Label>{t('scraper.location')}</Label>
                   <Input
-                    placeholder="VD: Hà Nội, TP.HCM, Đà Nẵng..."
+                    placeholder={t('scraper.locationPlaceholder')}
                     value={groupLocation}
                     onChange={(e) => setGroupLocation(e.target.value)}
                     className="border-2"
                   />
                   <p className="text-xs text-gray-500">
-                    Nếu nhập địa điểm, hệ thống sẽ ưu tiên tìm các nhóm liên quan tới khu vực đó.
+                    {t('scraper.locationHint')}
                   </p>
                 </div>
                 <div className="pt-2 space-y-3">
@@ -552,12 +548,12 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     {isLoading ? (
                       <>
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Đang quét...
+                        {t('scraper.scanning')}
                       </>
                     ) : (
                       <>
                         <Search className="w-5 h-5 mr-2" />
-                        🔍 Quét danh sách hội nhóm theo từ khóa
+                        🔍 {t('scraper.scanGroupsBtn')}
                       </>
                     )}
                   </Button>
@@ -590,36 +586,36 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     className="border-2"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={handleOpenGroupSelector}
                       className="flex-1 h-10 border-2 border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100"
                     >
                       <Users className="w-4 h-4 mr-2" />
-                      Chọn từ nhóm đã quét ({savedGroups.length > 0 ? savedGroups.length : '...'})
+                      {t('scraper.selectFromScraped')} ({savedGroups.length > 0 ? savedGroups.length : '...'})
                     </Button>
                     {feedUrl && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setFeedUrl('')}
                         className="h-10 px-3 text-gray-500 hover:text-red-500 hover:border-red-300"
                       >
                         <X className="w-4 h-4 mr-1" />
-                        Xóa
+                        {t('scraper.clear')}
                       </Button>
                     )}
                   </div>
                   {feedUrl && (
                     <p className="text-xs text-green-600">
-                      ✓ Đã chọn {feedUrl.split('\n').filter(u => u.trim()).length} nhóm
+                      ✓ {t('scraper.selectedGroups').replace('{count}', String(feedUrl.split('\n').filter((u: string) => u.trim()).length))}
                     </p>
                   )}
                 </div>
 
                 {/* Mức độ ưu tiên */}
                 <div className="space-y-2">
-                  <Label>Mức độ ưu tiên quét</Label>
+                  <Label>{t('scraper.priorityLabel')}</Label>
                   <Select value={scrapePriority} onValueChange={(v) => setScrapePriority(v as any)}>
                     <SelectTrigger className="border-2">
                       <SelectValue />
@@ -628,19 +624,19 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                       <SelectItem value="high">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                          Cao - Quét kỹ, nhiều bài hơn
+                          {t('scraper.priorityHighDesc')}
                         </div>
                       </SelectItem>
                       <SelectItem value="medium">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                          Trung bình - Cân bằng
+                          {t('scraper.priorityMediumDesc')}
                         </div>
                       </SelectItem>
                       <SelectItem value="low">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                          Thấp - Nhanh, ít bài hơn
+                          {t('scraper.priorityLowDesc')}
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -663,8 +659,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   </div>
                 </div>
                 <div className="pt-2">
-                  <Button 
-                    onClick={handleScrapeFeed} 
+                  <Button
+                    onClick={handleScrapeFeed}
                     disabled={isLoading || serverStatus === 'offline'}
                     className="w-full h-12 text-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 disabled:opacity-50"
                   >
@@ -682,7 +678,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                   </Button>
                   {!feedUrl && (
                     <p className="text-xs text-amber-600 mt-2 text-center">
-                      ⚠️ Vui lòng nhập link nhóm hoặc chọn từ danh sách đã quét
+                      ⚠️ {t('scraper.enterLinkWarning')}
                     </p>
                   )}
                 </div>
@@ -696,7 +692,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <span className="text-xl">👥</span>
-                  Danh sách hội nhóm liên quan tới từ khóa ({groups.length})
+                  {t('scraper.groupListTitle')} ({groups.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -712,7 +708,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                         </p>
                         {group.keywords && group.keywords.length > 0 && (
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Từ khóa: {group.keywords.join(', ')}
+                            {t('scraper.keywords')}: {group.keywords.join(', ')}
                           </p>
                         )}
                       </div>
@@ -723,7 +719,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                           rel="noopener noreferrer"
                           className="text-sm text-blue-600 hover:underline ml-4 shrink-0"
                         >
-                          Mở nhóm
+                          {t('scraper.openGroup')}
                         </a>
                       )}
                     </div>
@@ -740,14 +736,14 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <span className="text-xl">📊</span>
-                    Kết quả: {results.length} bài viết (đã tự động lưu)
+                    {t('scraper.results')}: {results.length} ({t('scraper.autoSaved')})
                   </CardTitle>
                   <div className="flex gap-2">
                     <Badge className="bg-green-100 text-green-700">
-                      {results.filter(r => r.type === 'Buying').length} Mua
+                      {results.filter((r: any) => r.type === 'Buying').length} {t('scraper.buy')}
                     </Badge>
                     <Badge className="bg-orange-100 text-orange-700">
-                      {results.filter(r => r.type === 'Selling').length} Bán
+                      {results.filter((r: any) => r.type === 'Selling').length} {t('scraper.sell')}
                     </Badge>
                   </div>
                 </div>
@@ -758,21 +754,21 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     <div key={index} className="p-4 border rounded-lg hover:bg-gray-50">
                       <div className="flex items-start gap-4">
                         {item.image && (
-                          <img 
-                            src={item.image} 
-                            alt="" 
+                          <img
+                            src={item.image}
+                            alt=""
                             className="w-20 h-20 object-cover rounded-lg"
                             onError={(e) => (e.currentTarget.style.display = 'none')}
                           />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <Badge 
-                              className={item.type === 'Buying' 
-                                ? 'bg-green-100 text-green-700' 
-                                : item.type === 'Selling' 
-                                ? 'bg-orange-100 text-orange-700' 
-                                : 'bg-gray-100 text-gray-700'
+                            <Badge
+                              className={item.type === 'Buying'
+                                ? 'bg-green-100 text-green-700'
+                                : item.type === 'Selling'
+                                  ? 'bg-orange-100 text-orange-700'
+                                  : 'bg-gray-100 text-gray-700'
                               }
                             >
                               {item.type === 'Buying' ? '🛒 Mua' : item.type === 'Selling' ? '💰 Bán' : '❓ Khác'}
@@ -791,8 +787,8 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                           <div className="flex items-center gap-4 mt-2">
                             {(item.estimatedPrice || item.price) && (
                               <span className="text-red-600 font-semibold">
-                                {item.estimatedPrice 
-                                  ? `~${item.estimatedPrice.toLocaleString()}đ` 
+                                {item.estimatedPrice
+                                  ? `~${item.estimatedPrice.toLocaleString()}đ`
                                   : item.price
                                 }
                               </span>
@@ -864,7 +860,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
               {/* Header với nút chọn tất cả */}
               <div className="flex items-center justify-between py-2 border-b shrink-0">
                 <div className="flex items-center gap-2">
-                  <Checkbox 
+                  <Checkbox
                     checked={paginatedGroups.length > 0 && paginatedGroups.every(g => selectedGroupIds.includes(g._id))}
                     onCheckedChange={handleSelectAllInPage}
                   />
@@ -890,14 +886,13 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
                     {paginatedGroups.map((group) => (
                       <div
                         key={group._id}
-                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
-                          selectedGroupIds.includes(group._id) 
-                            ? 'bg-purple-50 border-purple-400 shadow-sm' 
-                            : 'hover:bg-gray-50 hover:border-gray-300'
-                        }`}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-all ${selectedGroupIds.includes(group._id)
+                          ? 'bg-purple-50 border-purple-400 shadow-sm'
+                          : 'hover:bg-gray-50 hover:border-gray-300'
+                          }`}
                         onClick={() => handleToggleGroup(group._id)}
                       >
-                        <Checkbox 
+                        <Checkbox
                           checked={selectedGroupIds.includes(group._id)}
                           onCheckedChange={() => handleToggleGroup(group._id)}
                           className="mt-0.5"
@@ -962,7 +957,7 @@ export function Scraper({ onNavigateToPosts }: ScraperProps) {
             <Button variant="outline" onClick={() => setShowGroupSelector(false)}>
               Hủy
             </Button>
-            <Button 
+            <Button
               onClick={handleApplySelectedGroups}
               disabled={selectedGroupIds.length === 0}
               className="bg-purple-600 hover:bg-purple-700"
