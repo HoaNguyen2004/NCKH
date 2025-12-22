@@ -18,22 +18,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { useLanguage } from '../../contexts/LanguageContext';
 
 // Logo SVG component
 const LogoIcon = ({ className = "w-16 h-16" }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className}>
-    <circle cx="50" cy="50" r="48" fill="currentColor" className="text-gray-900" />
+    <circle cx="50" cy="50" r="48" fill="currentColor" className="text-gray-900"/>
     <g stroke="white" strokeWidth="2" fill="none">
       {/* Planet circle */}
-      <ellipse cx="50" cy="50" rx="30" ry="30" />
+      <ellipse cx="50" cy="50" rx="30" ry="30"/>
       {/* Orbit ring */}
-      <ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(-20 50 50)" />
+      <ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(-20 50 50)"/>
       {/* Compass needle */}
-      <path d="M50 25 L55 50 L50 75 L45 50 Z" fill="white" stroke="none" />
-      <circle cx="50" cy="50" r="5" />
+      <path d="M50 25 L55 50 L50 75 L45 50 Z" fill="white" stroke="none"/>
+      <circle cx="50" cy="50" r="5"/>
       {/* Star */}
-      <path d="M75 22 L77 28 L83 28 L78 32 L80 38 L75 34 L70 38 L72 32 L67 28 L73 28 Z" fill="white" stroke="none" />
+      <path d="M75 22 L77 28 L83 28 L78 32 L80 38 L75 34 L70 38 L72 32 L67 28 L73 28 Z" fill="white" stroke="none"/>
     </g>
   </svg>
 );
@@ -48,7 +47,6 @@ interface RegisterProps {
 }
 
 export function Register({ onRegister, onShowLogin }: RegisterProps) {
-  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -64,7 +62,7 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+  
   // States cho kiểm tra email/phone realtime
   const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [phoneStatus, setPhoneStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -79,23 +77,23 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
       setEmailStatus('idle');
       return;
     }
-
+    
     setEmailStatus('checking');
     try {
       const res = await fetch(`${API_URL}/auth/check-email?email=${encodeURIComponent(email)}`);
       const data = await res.json();
-
+      
       if (data.success) {
         setEmailStatus(data.exists ? 'taken' : 'available');
         if (data.exists) {
-          setErrors(prev => ({ ...prev, email: t('register.emailTaken') }));
+          setErrors(prev => ({ ...prev, email: 'Email này đã được đăng ký' }));
         }
       }
     } catch (err) {
       console.error('Check email error:', err);
       setEmailStatus('idle');
     }
-  }, [t]);
+  }, []);
 
   // Hàm kiểm tra số điện thoại đã tồn tại chưa
   const checkPhoneExists = useCallback(async (phone: string) => {
@@ -104,23 +102,23 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
       setPhoneStatus('idle');
       return;
     }
-
+    
     setPhoneStatus('checking');
     try {
       const res = await fetch(`${API_URL}/auth/check-phone?phone=${encodeURIComponent(normalizedPhone)}`);
       const data = await res.json();
-
+      
       if (data.success) {
         setPhoneStatus(data.exists ? 'taken' : 'available');
         if (data.exists) {
-          setErrors(prev => ({ ...prev, phone: t('register.phoneTaken') }));
+          setErrors(prev => ({ ...prev, phone: 'Số điện thoại này đã được đăng ký' }));
         }
       }
     } catch (err) {
       console.error('Check phone error:', err);
       setPhoneStatus('idle');
     }
-  }, [t]);
+  }, []);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -128,7 +126,7 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
-
+    
     // Debounce check email
     if (field === 'email') {
       setEmailStatus('idle');
@@ -136,7 +134,7 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
       const timeout = setTimeout(() => checkEmailExists(value), 500);
       setEmailCheckTimeout(timeout);
     }
-
+    
     // Debounce check phone
     if (field === 'phone') {
       setPhoneStatus('idle');
@@ -150,45 +148,45 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
     const newErrors: Record<string, string> = {};
 
     if (!formData.fullName.trim()) {
-      newErrors.fullName = t('register.validation.fullName');
+      newErrors.fullName = 'Vui lòng nhập họ tên';
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = t('register.validation.email');
+      newErrors.email = 'Vui lòng nhập email';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = t('register.validation.emailInvalid');
+      newErrors.email = 'Email không hợp lệ';
     } else if (emailStatus === 'taken') {
-      newErrors.email = t('register.emailTaken');
+      newErrors.email = 'Email này đã được đăng ký';
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = t('register.validation.phone');
+      newErrors.phone = 'Vui lòng nhập số điện thoại';
     } else if (!/^[0-9]{10}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = t('register.validation.phoneInvalid');
+      newErrors.phone = 'Số điện thoại không hợp lệ';
     } else if (phoneStatus === 'taken') {
-      newErrors.phone = t('register.phoneTaken');
+      newErrors.phone = 'Số điện thoại này đã được đăng ký';
     }
 
     if (!formData.role) {
-      newErrors.role = t('register.validation.role');
+      newErrors.role = 'Vui lòng chọn vai trò';
     }
 
     if (!formData.password) {
-      newErrors.password = t('register.validation.password');
+      newErrors.password = 'Vui lòng nhập mật khẩu';
     } else if (formData.password.length < 6) {
-      newErrors.password = t('register.validation.passwordMin');
+      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = t('register.validation.passwordMismatch');
+      newErrors.confirmPassword = 'Mật khẩu không khớp';
     }
 
     if (!formData.otp.trim()) {
-      newErrors.otp = t('register.validation.otp');
+      newErrors.otp = 'Vui lòng nhập mã xác nhận đã gửi về email';
     }
 
     if (!agreeTerms) {
-      newErrors.terms = t('register.validation.terms');
+      newErrors.terms = 'Vui lòng đồng ý với điều khoản';
     }
 
     setErrors(newErrors);
@@ -197,7 +195,7 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (validateForm()) {
       onRegister(formData);
     }
@@ -214,10 +212,10 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
 
           <div className="space-y-4">
             <h2 className="text-gray-900 text-4xl">
-              {t('register.startFree')}
+              Bắt đầu miễn phí ngay hôm nay
             </h2>
             <p className="text-gray-600 text-lg">
-              {t('register.createDesc')}
+              Tạo tài khoản và trải nghiệm sức mạnh của AI trong phân tích mạng xã hội
             </p>
           </div>
 
@@ -227,8 +225,8 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                 <span className="text-purple-600">🚀</span>
               </div>
               <div>
-                <div className="text-gray-900">{t('register.freeTrial')}</div>
-                <div className="text-gray-500 text-sm">{t('register.noCard')}</div>
+                <div className="text-gray-900">Dùng thử 30 ngày miễn phí</div>
+                <div className="text-gray-500 text-sm">Không cần thẻ tín dụng</div>
               </div>
             </div>
 
@@ -237,8 +235,8 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                 <span className="text-blue-600">⚡</span>
               </div>
               <div>
-                <div className="text-gray-900">{t('register.setup5min')}</div>
-                <div className="text-gray-500 text-sm">{t('register.easyFast')}</div>
+                <div className="text-gray-900">Thiết lập trong 5 phút</div>
+                <div className="text-gray-500 text-sm">Dễ dàng và nhanh chóng</div>
               </div>
             </div>
 
@@ -247,20 +245,20 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                 <span className="text-green-600">💎</span>
               </div>
               <div>
-                <div className="text-gray-900">{t('register.support247')}</div>
-                <div className="text-gray-500 text-sm">{t('register.supportDesc')}</div>
+                <div className="text-gray-900">Hỗ trợ 24/7</div>
+                <div className="text-gray-500 text-sm">Đội ngũ chăm sóc khách hàng luôn sẵn sàng</div>
               </div>
             </div>
           </div>
 
           <div className="pt-4">
             <p className="text-gray-500 text-sm">
-              {t('register.haveAccount')}{' '}
-              <button
+              Đã có tài khoản?{' '}
+              <button 
                 onClick={onShowLogin}
                 className="text-purple-600 hover:underline"
               >
-                {t('register.loginNow')}
+                Đăng nhập ngay
               </button>
             </p>
           </div>
@@ -269,21 +267,21 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
         {/* Right Side - Register Form */}
         <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle>{t('register.createAccount')}</CardTitle>
+            <CardTitle>Tạo tài khoản</CardTitle>
             <CardDescription>
-              {t('register.fillInfo')}
+              Điền thông tin để bắt đầu sử dụng hệ thống
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">{t('register.fullName')} *</Label>
+                  <Label htmlFor="fullName">Họ và tên *</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       id="fullName"
-                      placeholder={t('register.namePlaceholder')}
+                      placeholder="Nguyễn Văn A"
                       value={formData.fullName}
                       onChange={(e) => handleChange('fullName', e.target.value)}
                       className={`pl-10 ${errors.fullName ? 'border-red-500' : ''}`}
@@ -295,12 +293,12 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="phone">{t('register.phone')} *</Label>
+                  <Label htmlFor="phone">Số điện thoại *</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       id="phone"
-                      placeholder={t('register.phonePlaceholder')}
+                      placeholder="0912345678"
                       value={formData.phone}
                       onChange={(e) => handleChange('phone', e.target.value)}
                       className={`pl-10 pr-10 ${errors.phone ? 'border-red-500' : phoneStatus === 'available' ? 'border-green-500' : ''}`}
@@ -322,13 +320,13 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                     <p className="text-red-500 text-sm">{errors.phone}</p>
                   )}
                   {phoneStatus === 'available' && !errors.phone && (
-                    <p className="text-green-500 text-sm">✓ {t('register.phoneAvailable')}</p>
+                    <p className="text-green-500 text-sm">✓ Số điện thoại có thể sử dụng</p>
                   )}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">{t('auth.email')} *</Label>
+                <Label htmlFor="email">Email *</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
@@ -356,16 +354,16 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                   <p className="text-red-500 text-sm">{errors.email}</p>
                 )}
                 {emailStatus === 'available' && !errors.email && (
-                  <p className="text-green-500 text-sm">✓ {t('register.emailAvailable')}</p>
+                  <p className="text-green-500 text-sm">✓ Email có thể sử dụng</p>
                 )}
               </div>
 
               <div className="mt-2 grid grid-cols-[2fr,1fr] gap-2">
                 <div className="space-y-2">
-                  <Label htmlFor="register-otp">{t('register.otpLabel')} *</Label>
+                  <Label htmlFor="register-otp">Mã xác nhận *</Label>
                   <Input
                     id="register-otp"
-                    placeholder={t('register.otpPlaceholder')}
+                    placeholder="Nhập mã 6 số đã gửi về email"
                     value={formData.otp}
                     onChange={(e) => handleChange('otp', e.target.value)}
                     className={errors.otp ? 'border-red-500' : ''}
@@ -390,25 +388,27 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                       if (!formData.email) {
                         setErrors((prev) => ({
                           ...prev,
-                          email: prev.email || t('register.enterEmailFirst'),
+                          email: prev.email || 'Vui lòng nhập email trước khi gửi mã',
                         }));
                         return;
                       }
 
                       try {
                         setOtpSending(true);
-                        setOtpInfo(t('register.otpSending'));
+                        setOtpInfo('Đang gửi mã xác nhận...');
                         await sendRegisterOtp(formData.email);
-                        setOtpInfo(t('register.otpSent'));
+                        setOtpInfo(
+                          'Mã xác nhận đăng ký đã được gửi. Vui lòng kiểm tra hộp thư (bao gồm cả mục Spam).'
+                        );
                       } catch (err: any) {
                         console.error('Send register OTP failed', err);
-                        setOtpInfo(err?.message || t('register.otpError'));
+                        setOtpInfo(err?.message || 'Không thể gửi mã xác nhận. Vui lòng thử lại.');
                       } finally {
                         setOtpSending(false);
                       }
                     }}
                   >
-                    {otpSending ? t('register.sendingOtp') : t('register.sendOtp')}
+                    {otpSending ? 'Đang gửi...' : 'Gửi mã'}
                   </Button>
                 </div>
               </div>
@@ -418,12 +418,12 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company">{t('register.company')}</Label>
+                  <Label htmlFor="company">Công ty</Label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       id="company"
-                      placeholder={t('register.companyPlaceholder')}
+                      placeholder="Tên công ty"
                       value={formData.company}
                       onChange={(e) => handleChange('company', e.target.value)}
                       className="pl-10"
@@ -432,12 +432,12 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="location">{t('register.location')}</Label>
+                  <Label htmlFor="location">Địa điểm</Label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       id="location"
-                      placeholder={t('register.locationPlaceholder')}
+                      placeholder="Hà Nội"
                       value={formData.location}
                       onChange={(e) => handleChange('location', e.target.value)}
                       className="pl-10"
@@ -447,16 +447,16 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">{t('register.role')} *</Label>
+                <Label htmlFor="role">Vai trò *</Label>
                 <Select value={formData.role} onValueChange={(value) => handleChange('role', value)}>
                   <SelectTrigger className={errors.role ? 'border-red-500' : ''}>
-                    <SelectValue placeholder={t('register.rolePlaceholder')} />
+                    <SelectValue placeholder="Chọn vai trò của bạn" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="smb">{t('register.roleSMB')}</SelectItem>
-                    <SelectItem value="sales">{t('register.roleSales')}</SelectItem>
-                    <SelectItem value="manager">{t('register.roleManager')}</SelectItem>
-                    <SelectItem value="student">{t('register.roleStudent')}</SelectItem>
+                    <SelectItem value="smb">SMB Owner - Chủ cửa hàng nhỏ</SelectItem>
+                    <SelectItem value="sales">Sales Staff - Nhân viên bán hàng</SelectItem>
+                    <SelectItem value="manager">Store Manager - Quản lý cửa hàng</SelectItem>
+                    <SelectItem value="student">IT Student - Sinh viên IT</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.role && (
@@ -466,7 +466,7 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">{t('register.password')} *</Label>
+                  <Label htmlFor="password">Mật khẩu *</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
@@ -495,7 +495,7 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">{t('register.confirmPassword')} *</Label>
+                  <Label htmlFor="confirmPassword">Xác nhận mật khẩu *</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
@@ -533,13 +533,13 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
                     className={errors.terms ? 'border-red-500' : ''}
                   />
                   <Label htmlFor="terms" className="cursor-pointer text-sm leading-relaxed">
-                    {t('register.agreeTerms')}{' '}
+                    Tôi đồng ý với{' '}
                     <button type="button" className="text-purple-600 hover:underline">
-                      {t('register.termsOfUse')}
+                      Điều khoản sử dụng
                     </button>
-                    {' '}{t('register.and')}{' '}
+                    {' '}và{' '}
                     <button type="button" className="text-purple-600 hover:underline">
-                      {t('register.privacyPolicy')}
+                      Chính sách bảo mật
                     </button>
                   </Label>
                 </div>
@@ -550,12 +550,13 @@ export function Register({ onRegister, onShowLogin }: RegisterProps) {
 
               <Button type="submit" className="w-full">
                 <UserPlus className="w-4 h-4 mr-2" />
-                {t('register.createButton')}
+                Tạo tài khoản
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm text-gray-500">
-              {t('register.consentText')}
+              Bằng cách đăng ký, bạn đồng ý nhận email về sản phẩm, 
+              cập nhật và khuyến mãi.
             </div>
           </CardContent>
         </Card>

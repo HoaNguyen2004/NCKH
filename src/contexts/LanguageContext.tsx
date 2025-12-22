@@ -35,7 +35,7 @@ const translations = {
     'common.active': 'Hoạt động',
     'common.inactive': 'Không hoạt động',
     'common.all': 'Tất cả',
-
+    
     // Auth
     'auth.login': 'Đăng nhập',
     'auth.logout': 'Đăng xuất',
@@ -49,7 +49,7 @@ const translations = {
     'auth.forgotPassword': 'Quên mật khẩu?',
     'auth.noAccount': 'Chưa có tài khoản?',
     'auth.haveAccount': 'Đã có tài khoản?',
-
+    
     // Sidebar
     'sidebar.dashboard': 'Trang chủ',
     'sidebar.users': 'Người dùng',
@@ -63,7 +63,7 @@ const translations = {
     'sidebar.aiSettings': 'Hệ thống AI',
     'sidebar.sources': 'Kết nối',
     'sidebar.research': 'Nghiên cứu',
-
+    
     // Admin Dashboard
     'admin.title': 'Trang quản trị',
     'admin.subtitle': 'Tổng quan hệ thống và quản lý',
@@ -77,7 +77,7 @@ const translations = {
     'admin.databaseBackup': 'Sao lưu dữ liệu',
     'admin.viewLogs': 'Xem nhật ký',
     'admin.analytics': 'Phân tích',
-
+    
     // Manager Dashboard
     'manager.title': 'Trang quản lý',
     'manager.subtitle': 'Thông tin kinh doanh và quản lý đội nhóm',
@@ -97,7 +97,7 @@ const translations = {
     'manager.viewAllLeads': 'Xem tất cả khách hàng',
     'manager.reports': 'Báo cáo',
     'manager.setGoals': 'Đặt mục tiêu',
-
+    
     // Sales Dashboard
     'sales.title': 'Trang bán hàng',
     'sales.subtitle': 'Hoạt động bán hàng và khách hàng tiềm năng hàng ngày',
@@ -127,7 +127,7 @@ const translations = {
     'sales.updateStatus': 'Cập nhật trạng thái',
     'sales.myStats': 'Thống kê của tôi',
     'sales.viewAllChats': 'Xem tất cả cuộc trò chuyện',
-
+    
     // Users Page
     'users.title': 'Quản lý người dùng',
     'users.subtitle': 'Quản lý tài khoản người dùng và phân quyền',
@@ -139,7 +139,7 @@ const translations = {
     'users.lastActive': 'Hoạt động lần cuối',
     'users.postsAnalyzed': 'Bài đăng đã phân tích',
     'users.viewDetails': 'Xem chi tiết',
-
+    
     // Posts Page
     'posts.title': 'Quản lý bài đăng',
     'posts.subtitle': 'Bài đăng từ mạng xã hội đã thu thập và phân tích',
@@ -175,7 +175,7 @@ const translations = {
     'posts.viewOriginal': 'Xem bài gốc',
     'posts.pagination.prev': 'Trước',
     'posts.pagination.next': 'Sau',
-
+    
     // Products Page
     'products.title': 'Quản lý sản phẩm',
     'products.subtitle': 'Theo dõi giá và nhu cầu thị trường',
@@ -204,7 +204,7 @@ const translations = {
     'products.listTitle': 'Danh sách sản phẩm',
     'products.searchPlaceholder': 'Tìm kiếm sản phẩm...',
     'products.editProduct': 'Chỉnh sửa sản phẩm',
-
+    
     // Leads Page
     'leads.title': 'Quản lý khách hàng tiềm năng',
     'leads.subtitle': 'Theo dõi và quản lý khách hàng tiềm năng',
@@ -242,7 +242,7 @@ const translations = {
     'leads.status.contacted': 'Đã liên hệ',
     'leads.status.qualified': 'Tiềm năng',
     'leads.status.lost': 'Thất bại',
-
+    
     // Sales Log
     'sidebar.salesLog': 'Nhật ký Sales',
     'salesLog.title': 'Nhật ký Sales',
@@ -271,7 +271,7 @@ const translations = {
     'salesLog.reviewConclusion': 'Kết luận',
     'salesLog.reviewAdminResponse': 'Phản hồi của Admin',
     'salesLog.reviewAdminResponsePlaceholder': 'Nhập phản hồi...',
-
+    
     // Conversations Page
     'conversations.title': 'Cuộc trò chuyện',
     'conversations.subtitle': 'Quản lý tin nhắn và tương tác với khách hàng',
@@ -282,7 +282,7 @@ const translations = {
     'conversations.selectChat': 'Chọn cuộc trò chuyện để xem chi tiết',
     'conversations.typeMessage': 'Nhập tin nhắn...',
     'conversations.send': 'Gửi',
-
+    
     // Reports Page
     'reports.title': 'Báo cáo và phân tích',
     'reports.subtitle': 'Tổng quan hiệu suất và xu hướng',
@@ -315,7 +315,7 @@ const translations = {
     'reports.exportButton': 'Xuất báo cáo',
     'reports.exportSuccess': 'Báo cáo đã được xuất thành công',
     'reports.exportError': 'Lỗi khi xuất báo cáo',
-
+    
     // AI Settings Page
     'ai.title': 'Cài đặt hệ thống AI',
     'ai.subtitle': 'Cấu hình và quản lý các mô hình AI',
@@ -329,7 +329,7 @@ const translations = {
     'ai.performance': 'Hiệu suất',
     'ai.configure': 'Cấu hình',
     'ai.retrain': 'Huấn luyện lại',
-
+    
     // Sources Page
     'sources.title': 'Kết nối nguồn dữ liệu',
     'sources.subtitle': 'Quản lý kết nối mạng xã hội và thu thập dữ liệu',
@@ -353,7 +353,7 @@ const translations = {
     'groups.addGroup': 'Thêm nhóm thủ công',
     'groups.fetchName': 'Lấy tên nhóm tự động',
     'groups.deleteConfirm': 'Bạn có chắc muốn xóa nhóm này?',
-
+    
     // Scraper Page
     'scraper.subtitle': 'Thu thập dữ liệu từ Facebook Groups và Marketplace',
     'scraper.step1Title': 'Bước 1: Đăng nhập Facebook',
@@ -366,7 +366,7 @@ const translations = {
     'scraper.feedModeTitle': 'Feed Mode',
     'scraper.feedModeDesc': 'Cào feed + lọc',
     'scraper.step2SearchTitle': 'Bước 2: Quét theo Search',
-    'scraper.step2SearchDesc': 'Nhập link Group/Marketplace và từ khóa để tìm kiếm',
+'scraper.step2SearchDesc': 'Nhập link Group/Marketplace và từ khóa để tìm kiếm',
     'scraper.groupLinkLabel': 'Link Group hoặc Marketplace',
     'scraper.keywordsLabel': 'Từ khóa (mỗi dòng 1 từ khóa)',
     'scraper.searchButtonIdle': '🔍 Quét Search',
@@ -376,6 +376,7 @@ const translations = {
     'scraper.scrollLabel': 'Số lần cuộn trang',
     'scraper.scrollMin': '5 (Nhanh)',
     'scraper.scrollMax': '30 (Nhiều)',
+'scraper.step2FeedTitle': 'Bước 2: Cào Feed',
     'scraper.step2FeedDesc': 'Vào trang feed và cuộn để load tất cả bài viết, AI sẽ tự động phân loại',
     'scraper.serverOnline': 'Server Online',
     'scraper.serverOffline': 'Server Offline',
@@ -391,7 +392,7 @@ const translations = {
     'research.marketTrends': 'Xu hướng thị trường',
     'research.keywords': 'Từ khóa',
     'research.insights': 'Insights',
-
+    
     // Roles
     'role.admin': 'Quản trị viên',
     'role.manager': 'Store Manager',
@@ -428,230 +429,6 @@ const translations = {
     'account.enterCompany': 'Nhập tên công ty hoặc tổ chức',
     'account.location': 'Địa chỉ',
     'account.enterLocation': 'Nhập địa chỉ của bạn',
-
-    // Login Page
-    'login.welcomeBack': 'Chào mừng trở lại!',
-    'login.systemDesc': 'Hệ thống AI phân tích nhu cầu mua bán trên mạng xã hội',
-    'login.aiAnalysis': 'Phân tích AI thông minh',
-    'login.aiAccuracy': 'Độ chính xác lên đến 94.2%',
-    'login.autoCollect': 'Tự động thu thập dữ liệu',
-    'login.platformList': 'Từ Facebook, Instagram, Twitter',
-    'login.detailedReports': 'Báo cáo chi tiết',
-    'login.marketTrends': 'Phân tích xu hướng thị trường',
-    'login.title': 'Đăng nhập',
-    'login.subtitle': 'Nhập thông tin tài khoản để tiếp tục',
-    'login.rememberMe': 'Ghi nhớ đăng nhập',
-    'login.forgotPassword': 'Quên mật khẩu?',
-    'login.loggingIn': 'Đang đăng nhập...',
-    'login.loginButton': 'Đăng nhập',
-    'login.orDemoAccount': 'Hoặc dùng tài khoản demo',
-    'login.noAccount': 'Chưa có tài khoản?',
-    'login.registerNow': 'Đăng ký ngay',
-    'login.forgotTitle': 'Quên mật khẩu',
-    'login.forgotDesc': 'Nhập email của bạn để nhận mã xác nhận (OTP) đặt lại mật khẩu.',
-    'login.enterEmail': 'Vui lòng nhập email',
-    'login.sendingCode': 'Đang gửi mã xác nhận...',
-    'login.codeSent': 'Nếu email tồn tại, mã xác nhận đã được gửi. Vui lòng kiểm tra hộp thư.',
-    'login.errorSendCode': 'Lỗi khi gửi mã xác nhận',
-    'login.cancel': 'Hủy',
-    'login.sendCode': 'Gửi mã',
-    'login.sending': 'Đang gửi...',
-    'login.step2Desc': 'Nhập mã xác nhận đã được gửi đến email của bạn và đặt mật khẩu mới.',
-    'login.otpLabel': 'Mã xác nhận (OTP)',
-    'login.otpPlaceholder': 'Nhập mã 6 số',
-    'login.newPassword': 'Mật khẩu mới',
-    'login.confirmNewPassword': 'Xác nhận mật khẩu mới',
-    'login.back': 'Quay lại',
-    'login.resendCode': 'Gửi lại mã',
-    'login.resendingCode': 'Đang gửi lại mã xác nhận...',
-    'login.codeResent': 'Nếu email tồn tại, mã xác nhận mới đã được gửi. Vui lòng kiểm tra hộp thư.',
-    'login.errorResendCode': 'Lỗi khi gửi lại mã xác nhận',
-    'login.fillAllFields': 'Vui lòng nhập đầy đủ thông tin',
-    'login.changingPassword': 'Đang đổi mật khẩu...',
-    'login.changePassword': 'Đổi mật khẩu',
-    'login.passwordChanged': 'Đổi mật khẩu thành công',
-    'login.passwordChangeFailed': 'Đổi mật khẩu thất bại',
-    'login.processing': 'Đang xử lý...',
-    'login.enterEmailFirst': 'Vui lòng nhập email để gửi lại mã',
-
-    // Register Page
-    'register.startFree': 'Bắt đầu miễn phí ngay hôm nay',
-    'register.createDesc': 'Tạo tài khoản và trải nghiệm sức mạnh của AI trong phân tích mạng xã hội',
-    'register.freeTrial': 'Dùng thử 30 ngày miễn phí',
-    'register.noCard': 'Không cần thẻ tín dụng',
-    'register.setup5min': 'Thiết lập trong 5 phút',
-    'register.easyFast': 'Dễ dàng và nhanh chóng',
-    'register.support247': 'Hỗ trợ 24/7',
-    'register.supportDesc': 'Đội ngũ chăm sóc khách hàng luôn sẵn sàng',
-    'register.haveAccount': 'Đã có tài khoản?',
-    'register.loginNow': 'Đăng nhập ngay',
-    'register.createAccount': 'Tạo tài khoản',
-    'register.fillInfo': 'Điền thông tin để bắt đầu sử dụng hệ thống',
-    'register.fullName': 'Họ và tên',
-    'register.namePlaceholder': 'Nguyễn Văn A',
-    'register.phone': 'Số điện thoại',
-    'register.phonePlaceholder': '0912345678',
-    'register.phoneAvailable': 'Số điện thoại có thể sử dụng',
-    'register.phoneTaken': 'Số điện thoại này đã được đăng ký',
-    'register.emailAvailable': 'Email có thể sử dụng',
-    'register.emailTaken': 'Email này đã được đăng ký',
-    'register.otpLabel': 'Mã xác nhận',
-    'register.otpPlaceholder': 'Nhập mã 6 số đã gửi về email',
-    'register.sendOtp': 'Gửi mã',
-    'register.sendingOtp': 'Đang gửi...',
-    'register.otpSending': 'Đang gửi mã xác nhận...',
-    'register.otpSent': 'Mã xác nhận đăng ký đã được gửi. Vui lòng kiểm tra hộp thư (bao gồm cả mục Spam).',
-    'register.otpError': 'Không thể gửi mã xác nhận. Vui lòng thử lại.',
-    'register.enterEmailFirst': 'Vui lòng nhập email trước khi gửi mã',
-    'register.company': 'Công ty',
-    'register.companyPlaceholder': 'Tên công ty',
-    'register.location': 'Địa điểm',
-    'register.locationPlaceholder': 'Hà Nội',
-    'register.role': 'Vai trò',
-    'register.rolePlaceholder': 'Chọn vai trò của bạn',
-    'register.roleSMB': 'SMB Owner - Chủ cửa hàng nhỏ',
-    'register.roleSales': 'Sales Staff - Nhân viên bán hàng',
-    'register.roleManager': 'Store Manager - Quản lý cửa hàng',
-    'register.roleStudent': 'IT Student - Sinh viên IT',
-    'register.password': 'Mật khẩu',
-    'register.confirmPassword': 'Xác nhận mật khẩu',
-    'register.agreeTerms': 'Tôi đồng ý với',
-    'register.termsOfUse': 'Điều khoản sử dụng',
-    'register.and': 'và',
-    'register.privacyPolicy': 'Chính sách bảo mật',
-    'register.createButton': 'Tạo tài khoản',
-    'register.consentText': 'Bằng cách đăng ký, bạn đồng ý nhận email về sản phẩm, cập nhật và khuyến mãi.',
-    'register.validation.fullName': 'Vui lòng nhập họ tên',
-    'register.validation.email': 'Vui lòng nhập email',
-    'register.validation.emailInvalid': 'Email không hợp lệ',
-    'register.validation.phone': 'Vui lòng nhập số điện thoại',
-    'register.validation.phoneInvalid': 'Số điện thoại không hợp lệ',
-    'register.validation.role': 'Vui lòng chọn vai trò',
-    'register.validation.password': 'Vui lòng nhập mật khẩu',
-    'register.validation.passwordMin': 'Mật khẩu phải có ít nhất 6 ký tự',
-    'register.validation.passwordMismatch': 'Mật khẩu không khớp',
-    'register.validation.otp': 'Vui lòng nhập mã xác nhận đã gửi về email',
-    'register.validation.terms': 'Vui lòng đồng ý với điều khoản',
-
-    // AI Settings Page
-    'aiSettings.title': 'Cài đặt AI',
-    'aiSettings.subtitle': 'Cấu hình mô hình AI và các tham số phân tích',
-    'aiSettings.modelConfig': 'Cấu hình mô hình AI',
-    'aiSettings.modelConfigDesc': 'Quản lý các module AI và cài đặt của chúng',
-    'aiSettings.nlpModel': 'Phân loại văn bản NLP',
-    'aiSettings.nlpDesc': 'Phân loại bài đăng là yêu cầu mua hoặc bán',
-    'aiSettings.ocrModel': 'Đọc hình ảnh OCR',
-    'aiSettings.ocrDesc': 'Trích xuất văn bản từ hình ảnh trong bài đăng',
-    'aiSettings.spamDetector': 'Phát hiện Spam',
-    'aiSettings.spamDesc': 'Lọc bài đăng spam và lừa đảo',
-    'aiSettings.priceExtractor': 'Trích xuất giá',
-    'aiSettings.priceDesc': 'Xác định và trích xuất thông tin giá',
-    'aiSettings.accuracy': 'Độ chính xác',
-    'aiSettings.advancedSettings': 'Cài đặt nâng cao',
-    'aiSettings.advancedDesc': 'Tinh chỉnh các tham số phân tích AI',
-    'aiSettings.confidenceThreshold': 'Ngưỡng độ tin cậy',
-    'aiSettings.confidenceHint': 'Chỉ hiển thị kết quả có mức độ tin cậy trên ngưỡng này',
-    'aiSettings.modelVersion': 'Phiên bản mô hình',
-    'aiSettings.versionStable': 'Ổn định',
-    'aiSettings.versionProduction': 'Production',
-    'aiSettings.versionLatest': 'Mới nhất',
-    'aiSettings.versionBeta': 'Beta',
-    'aiSettings.versionHint': 'Chọn phiên bản mô hình AI để sử dụng cho phân tích',
-    'aiSettings.saveConfig': 'Lưu cấu hình',
-    'aiSettings.resetDefault': 'Đặt lại mặc định',
-    'aiSettings.performance': 'Hiệu suất mô hình',
-    'aiSettings.performanceDesc': 'Các chỉ số hiệu suất thời gian thực',
-    'aiSettings.overallAccuracy': 'Độ chính xác tổng thể',
-    'aiSettings.processingSpeed': 'Tốc độ xử lý',
-    'aiSettings.avgPerPost': 'trung bình/bài',
-    'aiSettings.activeModels': 'Mô hình hoạt động',
-    'aiSettings.quickActions': 'Thao tác nhanh',
-    'aiSettings.testModel': 'Kiểm tra mô hình',
-    'aiSettings.calibrate': 'Hiệu chỉnh mô hình',
-    'aiSettings.viewTrainingData': 'Xem dữ liệu huấn luyện',
-
-    // Scraper Page - Additional
-    'scraper.enterFbEmail': 'Vui lòng nhập email Facebook',
-    'scraper.openingChrome': 'Đang mở Chrome để đăng nhập...',
-    'scraper.loginSuccess': 'Đăng nhập thành công!',
-    'scraper.loginError': 'Lỗi đăng nhập',
-    'scraper.cannotConnectScraper': 'Không thể kết nối đến scraper server',
-    'scraper.checkServer': 'Hãy kiểm tra server đang chạy.',
-    'scraper.fillAllInfo': 'Vui lòng điền đầy đủ thông tin',
-    'scraper.scrapingAI': 'Đang quét dữ liệu và phân tích với AI...',
-    'scraper.foundPosts': 'Tìm thấy {count} bài viết!',
-    'scraper.savedInfo': 'Đã lưu: {posts} bài đăng, {leads} khách hàng tiềm năng',
-    'scraper.errorScraping': 'Lỗi khi quét dữ liệu',
-    'scraper.cannotConnect': 'Không thể kết nối đến server',
-    'scraper.enterEmailKeywords': 'Vui lòng nhập email và từ khóa',
-    'scraper.scanningGroups': 'Đang quét danh sách hội nhóm liên quan tới từ khóa...',
-    'scraper.foundGroups': 'Tìm thấy {count} hội nhóm liên quan tới từ khóa',
-    'scraper.errorGroups': 'Lỗi khi quét danh sách hội nhóm',
-    'scraper.cannotConnectGroups': 'Không thể kết nối đến server (quét hội nhóm)',
-    'scraper.fillEmailFeed': 'Vui lòng điền đầy đủ thông tin (email và link feed)',
-    'scraper.scrapingFeeds': 'Đang quét {count} feed với mức độ ưu tiên {priority}...',
-    'scraper.priorityHigh': 'Cao',
-    'scraper.priorityMedium': 'Trung bình',
-    'scraper.priorityLow': 'Thấp',
-    'scraper.foundPostsFromGroups': 'Tìm thấy {posts} bài viết từ {groups} nhóm!',
-    'scraper.location': 'Địa điểm (tùy chọn)',
-    'scraper.locationPlaceholder': 'VD: Hà Nội, TP.HCM, Đà Nẵng...',
-    'scraper.locationHint': 'Nếu nhập địa điểm, hệ thống sẽ ưu tiên tìm các nhóm liên quan tới khu vực đó.',
-    'scraper.scanning': 'Đang quét...',
-    'scraper.scanGroupsBtn': 'Quét danh sách hội nhóm theo từ khóa',
-    'scraper.feedLabel': 'Link nhóm Facebook (hoặc chọn từ danh sách đã quét)',
-    'scraper.feedPlaceholder': 'https://www.facebook.com/groups/123456789\n(Mỗi link 1 dòng)',
-    'scraper.selectFromScraped': 'Chọn từ nhóm đã quét',
-    'scraper.clear': 'Xóa',
-    'scraper.selectedGroups': 'Đã chọn {count} nhóm',
-    'scraper.priorityLabel': 'Mức độ ưu tiên quét',
-    'scraper.priorityHighDesc': 'Cao - Quét kỹ, nhiều bài hơn',
-    'scraper.priorityMediumDesc': 'Trung bình - Cân bằng',
-    'scraper.priorityLowDesc': 'Thấp - Nhanh, ít bài hơn',
-    'scraper.enterLinkWarning': 'Vui lòng nhập link nhóm hoặc chọn từ danh sách đã quét',
-    'scraper.groupListTitle': 'Danh sách hội nhóm liên quan tới từ khóa',
-    'scraper.keywords': 'Từ khóa',
-    'scraper.openGroup': 'Mở nhóm',
-    'scraper.results': 'Kết quả',
-    'scraper.autoSaved': 'đã tự động lưu',
-    'scraper.buy': 'Mua',
-    'scraper.sell': 'Bán',
-    'scraper.other': 'Khác',
-    'scraper.confidence': 'tin cậy',
-
-    // Sales Dashboard
-    'sales.title': 'Bảng điều khiển Sales',
-    'sales.subtitle': 'Quản lý leads và hoạt động bán hàng của bạn',
-    'sales.myLeads': 'Leads của tôi',
-    'sales.activeChats': 'Cuộc trò chuyện',
-    'sales.callsMade': 'Cuộc gọi',
-    'sales.conversionRate': 'Tỷ lệ chuyển đổi',
-    'sales.viewAllChats': 'Xem tất cả chat',
-    'sales.urgentLeads': 'Leads cần xử lý gấp',
-    'sales.urgentLeadsDesc': 'Các khách hàng tiềm năng có độ ưu tiên cao',
-    'sales.recentChats': 'Tin nhắn gần đây',
-    'sales.recentChatsDesc': 'Các cuộc trò chuyện mới nhất',
-    'sales.todayTasks': 'Nhiệm vụ hôm nay',
-    'sales.todayTasksDesc': 'Lịch làm việc của bạn',
-    'sales.makeCall': 'Gọi điện',
-    'sales.sendMessage': 'Nhắn tin',
-    'sales.addLead': 'Thêm Lead',
-    'sales.updateStatus': 'Cập nhật',
-    'sales.myStats': 'Thống kê',
-    'sales.table.priority': 'Ưu tiên',
-    'sales.table.lead': 'Khách hàng',
-    'sales.table.product': 'Sản phẩm',
-    'sales.table.budget': 'Ngân sách',
-    'sales.table.lastContact': 'Liên hệ cuối',
-    'sales.table.status': 'Trạng thái',
-    'sales.table.action': 'Hành động',
-    'sales.today': 'hôm nay',
-    'sales.unread': 'chưa đọc',
-
-    // Priority
-    'priority.high': 'Cao',
-    'priority.medium': 'Trung bình',
-    'priority.low': 'Thấp',
   },
   en: {
     // Common
@@ -677,7 +454,7 @@ const translations = {
     'common.active': 'Active',
     'common.inactive': 'Inactive',
     'common.all': 'All',
-
+    
     // Auth
     'auth.login': 'Login',
     'auth.logout': 'Logout',
@@ -691,7 +468,7 @@ const translations = {
     'auth.forgotPassword': 'Forgot password?',
     'auth.noAccount': "Don't have an account?",
     'auth.haveAccount': 'Already have an account?',
-
+    
     // Sidebar
     'sidebar.dashboard': 'Dashboard',
     'sidebar.users': 'Users',
@@ -705,7 +482,7 @@ const translations = {
     'sidebar.aiSettings': 'AI System',
     'sidebar.sources': 'Connections',
     'sidebar.research': 'Research',
-
+    
     // Admin Dashboard
     'admin.title': 'Admin Dashboard',
     'admin.subtitle': 'System overview and management',
@@ -719,7 +496,7 @@ const translations = {
     'admin.databaseBackup': 'Database Backup',
     'admin.viewLogs': 'View Logs',
     'admin.analytics': 'Analytics',
-
+    
     // Manager Dashboard
     'manager.title': 'Manager Dashboard',
     'manager.subtitle': 'Business insights and team management',
@@ -739,7 +516,7 @@ const translations = {
     'manager.viewAllLeads': 'View All Leads',
     'manager.reports': 'Reports',
     'manager.setGoals': 'Set Goals',
-
+    
     // Sales Dashboard
     'sales.title': 'Sales Dashboard',
     'sales.subtitle': 'Your daily sales activities and leads',
@@ -769,7 +546,7 @@ const translations = {
     'sales.updateStatus': 'Update Status',
     'sales.myStats': 'My Stats',
     'sales.viewAllChats': 'View All Chats',
-
+    
     // Users Page
     'users.title': 'User Management',
     'users.subtitle': 'Manage user accounts and permissions',
@@ -781,7 +558,7 @@ const translations = {
     'users.lastActive': 'Last Active',
     'users.postsAnalyzed': 'Posts Analyzed',
     'users.viewDetails': 'View Details',
-
+    
     // Posts Page
     'posts.title': 'Posts Management',
     'posts.subtitle': 'Social media posts collected and analyzed',
@@ -845,7 +622,7 @@ const translations = {
     'products.listTitle': 'Product List',
     'products.searchPlaceholder': 'Search products...',
     'products.editProduct': 'Edit Product',
-
+    
     // Leads Page
     'leads.title': 'Lead Management',
     'leads.subtitle': 'Track and manage potential customers',
@@ -883,7 +660,7 @@ const translations = {
     'leads.status.contacted': 'Contacted',
     'leads.status.qualified': 'Qualified',
     'leads.status.lost': 'Lost',
-
+    
     // Sales Log
     'sidebar.salesLog': 'Sales Log',
     'salesLog.title': 'Sales Log',
@@ -912,7 +689,7 @@ const translations = {
     'salesLog.reviewConclusion': 'Conclusion',
     'salesLog.reviewAdminResponse': 'Admin Response',
     'salesLog.reviewAdminResponsePlaceholder': 'Enter response...',
-
+    
     // Conversations Page
     'conversations.title': 'Conversations',
     'conversations.subtitle': 'Manage messages and customer interactions',
@@ -923,7 +700,7 @@ const translations = {
     'conversations.selectChat': 'Select a chat to view details',
     'conversations.typeMessage': 'Type a message...',
     'conversations.send': 'Send',
-
+    
     // Reports Page
     'reports.title': 'Reports & Analytics',
     'reports.subtitle': 'Performance overview and trends',
@@ -956,7 +733,7 @@ const translations = {
     'reports.exportButton': 'Export report',
     'reports.exportSuccess': 'Report exported successfully',
     'reports.exportError': 'Failed to export report',
-
+    
     // AI Settings Page
     'ai.title': 'AI System Settings',
     'ai.subtitle': 'Configure and manage AI models',
@@ -970,7 +747,7 @@ const translations = {
     'ai.performance': 'Performance',
     'ai.configure': 'Configure',
     'ai.retrain': 'Retrain',
-
+    
     // Sources Page
     'sources.title': 'Data Sources',
     'sources.subtitle': 'Manage social media connections and data collection',
@@ -994,7 +771,7 @@ const translations = {
     'groups.addGroup': 'Add group manually',
     'groups.fetchName': 'Fetch group name automatically',
     'groups.deleteConfirm': 'Are you sure you want to delete this group?',
-
+    
     // Scraper Page
     'scraper.subtitle': 'Collect data from Facebook Groups and Marketplace',
     'scraper.step1Title': 'Step 1: Login to Facebook',
@@ -1027,7 +804,7 @@ const translations = {
     'scraper.serverChecking': 'Checking...',
     'scraper.offlineTitle': 'Backend server is not running',
     'scraper.offlineDesc': 'Start the backend server before using this feature:',
-
+    
     // Research Page
     'research.title': 'Market Research',
     'research.subtitle': 'Analyze market trends and insights',
@@ -1035,7 +812,7 @@ const translations = {
     'research.marketTrends': 'Market Trends',
     'research.keywords': 'Keywords',
     'research.insights': 'Insights',
-
+    
     // Roles
     'role.admin': 'Administrator',
     'role.manager': 'Store Manager',
@@ -1072,230 +849,6 @@ const translations = {
     'account.enterCompany': 'Enter company or organization name',
     'account.location': 'Address',
     'account.enterLocation': 'Enter your address',
-
-    // Login Page
-    'login.welcomeBack': 'Welcome back!',
-    'login.systemDesc': 'AI system for analyzing buy/sell demand on social media',
-    'login.aiAnalysis': 'Smart AI Analysis',
-    'login.aiAccuracy': 'Up to 94.2% accuracy',
-    'login.autoCollect': 'Automatic data collection',
-    'login.platformList': 'From Facebook, Instagram, Twitter',
-    'login.detailedReports': 'Detailed reports',
-    'login.marketTrends': 'Market trend analysis',
-    'login.title': 'Login',
-    'login.subtitle': 'Enter your credentials to continue',
-    'login.rememberMe': 'Remember me',
-    'login.forgotPassword': 'Forgot password?',
-    'login.loggingIn': 'Logging in...',
-    'login.loginButton': 'Login',
-    'login.orDemoAccount': 'Or use demo account',
-    'login.noAccount': "Don't have an account?",
-    'login.registerNow': 'Register now',
-    'login.forgotTitle': 'Forgot Password',
-    'login.forgotDesc': 'Enter your email to receive a verification code (OTP) to reset your password.',
-    'login.enterEmail': 'Please enter email',
-    'login.sendingCode': 'Sending verification code...',
-    'login.codeSent': 'If the email exists, a verification code has been sent. Please check your inbox.',
-    'login.errorSendCode': 'Error sending verification code',
-    'login.cancel': 'Cancel',
-    'login.sendCode': 'Send code',
-    'login.sending': 'Sending...',
-    'login.step2Desc': 'Enter the verification code sent to your email and set a new password.',
-    'login.otpLabel': 'Verification Code (OTP)',
-    'login.otpPlaceholder': 'Enter 6-digit code',
-    'login.newPassword': 'New Password',
-    'login.confirmNewPassword': 'Confirm New Password',
-    'login.back': 'Back',
-    'login.resendCode': 'Resend code',
-    'login.resendingCode': 'Resending verification code...',
-    'login.codeResent': 'If the email exists, a new verification code has been sent. Please check your inbox.',
-    'login.errorResendCode': 'Error resending verification code',
-    'login.fillAllFields': 'Please fill in all fields',
-    'login.changingPassword': 'Changing password...',
-    'login.changePassword': 'Change Password',
-    'login.passwordChanged': 'Password changed successfully',
-    'login.passwordChangeFailed': 'Failed to change password',
-    'login.processing': 'Processing...',
-    'login.enterEmailFirst': 'Please enter email to resend code',
-
-    // Register Page
-    'register.startFree': 'Start free today',
-    'register.createDesc': 'Create an account and experience the power of AI in social media analysis',
-    'register.freeTrial': '30-day free trial',
-    'register.noCard': 'No credit card required',
-    'register.setup5min': 'Setup in 5 minutes',
-    'register.easyFast': 'Easy and fast',
-    'register.support247': '24/7 Support',
-    'register.supportDesc': 'Our support team is always ready',
-    'register.haveAccount': 'Already have an account?',
-    'register.loginNow': 'Login now',
-    'register.createAccount': 'Create Account',
-    'register.fillInfo': 'Fill in your information to get started',
-    'register.fullName': 'Full Name',
-    'register.namePlaceholder': 'John Doe',
-    'register.phone': 'Phone Number',
-    'register.phonePlaceholder': '0912345678',
-    'register.phoneAvailable': 'Phone number is available',
-    'register.phoneTaken': 'This phone number is already registered',
-    'register.emailAvailable': 'Email is available',
-    'register.emailTaken': 'This email is already registered',
-    'register.otpLabel': 'Verification Code',
-    'register.otpPlaceholder': 'Enter 6-digit code sent to email',
-    'register.sendOtp': 'Send code',
-    'register.sendingOtp': 'Sending...',
-    'register.otpSending': 'Sending verification code...',
-    'register.otpSent': 'Verification code has been sent. Please check your inbox (including Spam folder).',
-    'register.otpError': 'Failed to send verification code. Please try again.',
-    'register.enterEmailFirst': 'Please enter email before sending code',
-    'register.company': 'Company',
-    'register.companyPlaceholder': 'Company name',
-    'register.location': 'Location',
-    'register.locationPlaceholder': 'Ha Noi',
-    'register.role': 'Role',
-    'register.rolePlaceholder': 'Select your role',
-    'register.roleSMB': 'SMB Owner - Small Business Owner',
-    'register.roleSales': 'Sales Staff',
-    'register.roleManager': 'Store Manager',
-    'register.roleStudent': 'IT Student',
-    'register.password': 'Password',
-    'register.confirmPassword': 'Confirm Password',
-    'register.agreeTerms': 'I agree to the',
-    'register.termsOfUse': 'Terms of Use',
-    'register.and': 'and',
-    'register.privacyPolicy': 'Privacy Policy',
-    'register.createButton': 'Create Account',
-    'register.consentText': 'By registering, you agree to receive emails about products, updates and promotions.',
-    'register.validation.fullName': 'Please enter your full name',
-    'register.validation.email': 'Please enter email',
-    'register.validation.emailInvalid': 'Invalid email format',
-    'register.validation.phone': 'Please enter phone number',
-    'register.validation.phoneInvalid': 'Invalid phone number',
-    'register.validation.role': 'Please select a role',
-    'register.validation.password': 'Please enter password',
-    'register.validation.passwordMin': 'Password must be at least 6 characters',
-    'register.validation.passwordMismatch': 'Passwords do not match',
-    'register.validation.otp': 'Please enter the verification code sent to email',
-    'register.validation.terms': 'Please agree to the terms',
-
-    // AI Settings Page
-    'aiSettings.title': 'AI Settings',
-    'aiSettings.subtitle': 'Configure AI models and analysis parameters',
-    'aiSettings.modelConfig': 'AI Model Configuration',
-    'aiSettings.modelConfigDesc': 'Manage AI modules and their settings',
-    'aiSettings.nlpModel': 'NLP Text Classifier',
-    'aiSettings.nlpDesc': 'Classifies posts as buying or selling requests',
-    'aiSettings.ocrModel': 'OCR Image Reader',
-    'aiSettings.ocrDesc': 'Extracts text from images in posts',
-    'aiSettings.spamDetector': 'Spam Detector',
-    'aiSettings.spamDesc': 'Filters out spam and fraudulent posts',
-    'aiSettings.priceExtractor': 'Price Extractor',
-    'aiSettings.priceDesc': 'Identifies and extracts price information',
-    'aiSettings.accuracy': 'Accuracy',
-    'aiSettings.advancedSettings': 'Advanced Settings',
-    'aiSettings.advancedDesc': 'Fine-tune AI analysis parameters',
-    'aiSettings.confidenceThreshold': 'Confidence Threshold',
-    'aiSettings.confidenceHint': 'Only show results with confidence level above this threshold',
-    'aiSettings.modelVersion': 'Model Version',
-    'aiSettings.versionStable': 'Stable',
-    'aiSettings.versionProduction': 'Production',
-    'aiSettings.versionLatest': 'Latest',
-    'aiSettings.versionBeta': 'Beta',
-    'aiSettings.versionHint': 'Select the AI model version to use for analysis',
-    'aiSettings.saveConfig': 'Save Configuration',
-    'aiSettings.resetDefault': 'Reset to Default',
-    'aiSettings.performance': 'Model Performance',
-    'aiSettings.performanceDesc': 'Real-time performance metrics',
-    'aiSettings.overallAccuracy': 'Overall Accuracy',
-    'aiSettings.processingSpeed': 'Processing Speed',
-    'aiSettings.avgPerPost': 'avg. per post',
-    'aiSettings.activeModels': 'Active Models',
-    'aiSettings.quickActions': 'Quick Actions',
-    'aiSettings.testModel': 'Test Model',
-    'aiSettings.calibrate': 'Calibrate Models',
-    'aiSettings.viewTrainingData': 'View Training Data',
-
-    // Scraper Page - Additional
-    'scraper.enterFbEmail': 'Please enter Facebook email',
-    'scraper.openingChrome': 'Opening Chrome for login...',
-    'scraper.loginSuccess': 'Login successful!',
-    'scraper.loginError': 'Login error',
-    'scraper.cannotConnectScraper': 'Cannot connect to scraper server',
-    'scraper.checkServer': 'Please check if server is running.',
-    'scraper.fillAllInfo': 'Please fill in all information',
-    'scraper.scrapingAI': 'Scraping data and analyzing with AI...',
-    'scraper.foundPosts': 'Found {count} posts!',
-    'scraper.savedInfo': 'Saved: {posts} posts, {leads} leads',
-    'scraper.errorScraping': 'Error scraping data',
-    'scraper.cannotConnect': 'Cannot connect to server',
-    'scraper.enterEmailKeywords': 'Please enter email and keywords',
-    'scraper.scanningGroups': 'Scanning groups related to keywords...',
-    'scraper.foundGroups': 'Found {count} groups related to keywords',
-    'scraper.errorGroups': 'Error scanning groups',
-    'scraper.cannotConnectGroups': 'Cannot connect to server (group scanning)',
-    'scraper.fillEmailFeed': 'Please fill in all information (email and feed link)',
-    'scraper.scrapingFeeds': 'Scraping {count} feeds with {priority} priority...',
-    'scraper.priorityHigh': 'High',
-    'scraper.priorityMedium': 'Medium',
-    'scraper.priorityLow': 'Low',
-    'scraper.foundPostsFromGroups': 'Found {posts} posts from {groups} groups!',
-    'scraper.location': 'Location (optional)',
-    'scraper.locationPlaceholder': 'e.g. Ha Noi, Ho Chi Minh, Da Nang...',
-    'scraper.locationHint': 'If you enter a location, the system will prioritize finding groups related to that area.',
-    'scraper.scanning': 'Scanning...',
-    'scraper.scanGroupsBtn': 'Scan groups by keywords',
-    'scraper.feedLabel': 'Facebook group link (or select from scraped list)',
-    'scraper.feedPlaceholder': 'https://www.facebook.com/groups/123456789\n(One link per line)',
-    'scraper.selectFromScraped': 'Select from scraped groups',
-    'scraper.clear': 'Clear',
-    'scraper.selectedGroups': 'Selected {count} groups',
-    'scraper.priorityLabel': 'Scraping priority level',
-    'scraper.priorityHighDesc': 'High - Thorough scan, more posts',
-    'scraper.priorityMediumDesc': 'Medium - Balanced',
-    'scraper.priorityLowDesc': 'Low - Fast, fewer posts',
-    'scraper.enterLinkWarning': 'Please enter group link or select from scraped list',
-    'scraper.groupListTitle': 'Groups related to keywords',
-    'scraper.keywords': 'Keywords',
-    'scraper.openGroup': 'Open group',
-    'scraper.results': 'Results',
-    'scraper.autoSaved': 'auto-saved',
-    'scraper.buy': 'Buy',
-    'scraper.sell': 'Sell',
-    'scraper.other': 'Other',
-    'scraper.confidence': 'confidence',
-
-    // Sales Dashboard
-    'sales.title': 'Sales Dashboard',
-    'sales.subtitle': 'Manage your leads and sales activities',
-    'sales.myLeads': 'My Leads',
-    'sales.activeChats': 'Active Chats',
-    'sales.callsMade': 'Calls Made',
-    'sales.conversionRate': 'Conversion Rate',
-    'sales.viewAllChats': 'View All Chats',
-    'sales.urgentLeads': 'Urgent Leads',
-    'sales.urgentLeadsDesc': 'High priority potential customers',
-    'sales.recentChats': 'Recent Chats',
-    'sales.recentChatsDesc': 'Latest conversations',
-    'sales.todayTasks': 'Today Tasks',
-    'sales.todayTasksDesc': 'Your work schedule',
-    'sales.makeCall': 'Make Call',
-    'sales.sendMessage': 'Send Message',
-    'sales.addLead': 'Add Lead',
-    'sales.updateStatus': 'Update',
-    'sales.myStats': 'My Stats',
-    'sales.table.priority': 'Priority',
-    'sales.table.lead': 'Lead',
-    'sales.table.product': 'Product',
-    'sales.table.budget': 'Budget',
-    'sales.table.lastContact': 'Last Contact',
-    'sales.table.status': 'Status',
-    'sales.table.action': 'Action',
-    'sales.today': 'today',
-    'sales.unread': 'unread',
-
-    // Priority
-    'priority.high': 'High',
-    'priority.medium': 'Medium',
-    'priority.low': 'Low',
   },
 };
 

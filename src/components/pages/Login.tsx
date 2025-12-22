@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from '../ui/card';
 import { forgotPasswordOtp, resetPasswordWithOtp } from '../../utils/api';
-import { useLanguage } from '../../contexts/LanguageContext';
 
 interface LoginProps {
   onLogin: (email: string, password: string, remember?: boolean) => void;
@@ -24,23 +23,22 @@ interface LoginProps {
 // Logo SVG component
 const LogoIcon = ({ className = "w-16 h-16" }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className}>
-    <circle cx="50" cy="50" r="48" fill="currentColor" className="text-gray-900" />
+    <circle cx="50" cy="50" r="48" fill="currentColor" className="text-gray-900"/>
     <g stroke="white" strokeWidth="2" fill="none">
       {/* Planet circle */}
-      <ellipse cx="50" cy="50" rx="30" ry="30" />
+      <ellipse cx="50" cy="50" rx="30" ry="30"/>
       {/* Orbit ring */}
-      <ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(-20 50 50)" />
+      <ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(-20 50 50)"/>
       {/* Compass needle */}
-      <path d="M50 25 L55 50 L50 75 L45 50 Z" fill="white" stroke="none" />
-      <circle cx="50" cy="50" r="5" />
+      <path d="M50 25 L55 50 L50 75 L45 50 Z" fill="white" stroke="none"/>
+      <circle cx="50" cy="50" r="5"/>
       {/* Star */}
-      <path d="M75 22 L77 28 L83 28 L78 32 L80 38 L75 34 L70 38 L72 32 L67 28 L73 28 Z" fill="white" stroke="none" />
+      <path d="M75 22 L77 28 L83 28 L78 32 L80 38 L75 34 L70 38 L72 32 L67 28 L73 28 Z" fill="white" stroke="none"/>
     </g>
   </svg>
 );
 
 export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
-  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -67,7 +65,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
       manager: { email: 'manager@demo.com', password: 'manager123' },
       sales: { email: 'sales@demo.com', password: 'sales123' },
     };
-
+    
     const account = demoAccounts[role];
     if (account) {
       setEmail(account.email);
@@ -87,10 +85,10 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
 
           <div className="space-y-4">
             <h2 className="text-gray-900 text-4xl">
-              {t('login.welcomeBack')}
+              Chào mừng trở lại!
             </h2>
             <p className="text-gray-600 text-lg">
-              {t('login.systemDesc')}
+              Hệ thống AI phân tích nhu cầu mua bán trên mạng xã hội
             </p>
           </div>
 
@@ -100,8 +98,8 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                 <span className="text-blue-600">✓</span>
               </div>
               <div>
-                <div className="text-gray-900">{t('login.aiAnalysis')}</div>
-                <div className="text-gray-500 text-sm">{t('login.aiAccuracy')}</div>
+                <div className="text-gray-900">Phân tích AI thông minh</div>
+                <div className="text-gray-500 text-sm">Độ chính xác lên đến 94.2%</div>
               </div>
             </div>
 
@@ -110,8 +108,8 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                 <span className="text-purple-600">✓</span>
               </div>
               <div>
-                <div className="text-gray-900">{t('login.autoCollect')}</div>
-                <div className="text-gray-500 text-sm">{t('login.platformList')}</div>
+                <div className="text-gray-900">Tự động thu thập dữ liệu</div>
+                <div className="text-gray-500 text-sm">Từ Facebook, Instagram, Twitter</div>
               </div>
             </div>
 
@@ -120,8 +118,8 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                 <span className="text-green-600">✓</span>
               </div>
               <div>
-                <div className="text-gray-900">{t('login.detailedReports')}</div>
-                <div className="text-gray-500 text-sm">{t('login.marketTrends')}</div>
+                <div className="text-gray-900">Báo cáo chi tiết</div>
+                <div className="text-gray-500 text-sm">Phân tích xu hướng thị trường</div>
               </div>
             </div>
           </div>
@@ -130,15 +128,15 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
         {/* Right Side - Login Form */}
         <Card className="shadow-xl">
           <CardHeader>
-            <CardTitle>{t('login.title')}</CardTitle>
+            <CardTitle>Đăng nhập</CardTitle>
             <CardDescription>
-              {t('login.subtitle')}
+              Nhập thông tin tài khoản để tiếp tục
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">{t('auth.email')}</Label>
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
@@ -155,7 +153,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">{t('auth.password')}</Label>
+                <Label htmlFor="password">Mật khẩu</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input
@@ -191,7 +189,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                     disabled={!!loading}
                   />
                   <Label htmlFor="remember" className="cursor-pointer text-sm">
-                    {t('login.rememberMe')}
+                    Ghi nhớ đăng nhập
                   </Label>
                 </div>
                 <button
@@ -207,7 +205,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                   }}
                   className="text-sm text-blue-600 hover:underline"
                 >
-                  {t('login.forgotPassword')}
+                  Quên mật khẩu?
                 </button>
               </div>
 
@@ -219,7 +217,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
 
               <Button type="submit" className="w-full" disabled={!!loading}>
                 <LogIn className="w-4 h-4 mr-2" />
-                {loading ? t('login.loggingIn') : t('login.loginButton')}
+                {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
               </Button>
             </form>
 
@@ -230,7 +228,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                 </div>
                 <div className="relative flex justify-center text-sm">
                   <span className="px-2 bg-white text-gray-500">
-                    {t('login.orDemoAccount')}
+                    Hoặc dùng tài khoản demo
                   </span>
                 </div>
               </div>
@@ -267,14 +265,14 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
             {forgotOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
                 <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                  <h3 className="text-lg font-medium">{t('login.forgotTitle')}</h3>
+                  <h3 className="text-lg font-medium">Quên mật khẩu</h3>
                   {forgotStep === 1 ? (
                     <>
                       <p className="text-sm text-gray-600 mt-1">
-                        {t('login.forgotDesc')}
+                        Nhập email của bạn để nhận mã xác nhận (OTP) đặt lại mật khẩu.
                       </p>
                       <div className="mt-4 space-y-2">
-                        <Label htmlFor="forgot-email">{t('auth.email')}</Label>
+                        <Label htmlFor="forgot-email">Email</Label>
                         <Input
                           id="forgot-email"
                           type="email"
@@ -297,51 +295,53 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                           }}
                           disabled={forgotLoading}
                         >
-                          {t('login.cancel')}
+                          Hủy
                         </Button>
                         <Button
                           onClick={async () => {
                             if (!forgotEmail) {
-                              setForgotStatus(t('login.enterEmail'));
+                              setForgotStatus('Vui lòng nhập email');
                               return;
                             }
                             try {
                               setForgotLoading(true);
-                              setForgotStatus(t('login.sendingCode'));
+                              setForgotStatus('Đang gửi mã xác nhận...');
                               await forgotPasswordOtp(forgotEmail);
-                              setForgotStatus(t('login.codeSent'));
+                              setForgotStatus(
+                                'Nếu email tồn tại, mã xác nhận đã được gửi. Vui lòng kiểm tra hộp thư.'
+                              );
                               setForgotStep(2);
                             } catch (err: any) {
                               console.error(err);
-                              setForgotStatus(err?.message || t('login.errorSendCode'));
+                              setForgotStatus(err?.message || 'Lỗi khi gửi mã xác nhận');
                             } finally {
                               setForgotLoading(false);
                             }
                           }}
                           disabled={forgotLoading}
                         >
-                          {forgotLoading ? t('login.sending') : t('login.sendCode')}
+                          {forgotLoading ? 'Đang gửi...' : 'Gửi mã'}
                         </Button>
                       </div>
                     </>
                   ) : (
                     <>
                       <p className="text-sm text-gray-600 mt-1">
-                        {t('login.step2Desc')}
+                        Nhập mã xác nhận đã được gửi đến email của bạn và đặt mật khẩu mới.
                       </p>
                       <div className="mt-4 space-y-3">
                         <div className="space-y-2">
-                          <Label htmlFor="forgot-otp">{t('login.otpLabel')}</Label>
+                          <Label htmlFor="forgot-otp">Mã xác nhận (OTP)</Label>
                           <Input
                             id="forgot-otp"
                             value={otp}
                             onChange={(e) => setOtp(e.target.value)}
-                            placeholder={t('login.otpPlaceholder')}
+                            placeholder="Nhập mã 6 số"
                             disabled={forgotLoading}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="new-password">{t('login.newPassword')}</Label>
+                          <Label htmlFor="new-password">Mật khẩu mới</Label>
                           <Input
                             id="new-password"
                             type="password"
@@ -352,7 +352,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="confirm-new-password">{t('login.confirmNewPassword')}</Label>
+                          <Label htmlFor="confirm-new-password">Xác nhận mật khẩu mới</Label>
                           <Input
                             id="confirm-new-password"
                             type="password"
@@ -376,7 +376,7 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                           }}
                           disabled={forgotLoading}
                         >
-                          {t('login.back')}
+                          Quay lại
                         </Button>
                         <div className="flex gap-2">
                           <Button
@@ -384,42 +384,44 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                             onClick={async () => {
                               // Cho phép gửi lại mã OTP
                               if (!forgotEmail) {
-                                setForgotStatus(t('login.enterEmailFirst'));
+                                setForgotStatus('Vui lòng nhập email để gửi lại mã');
                                 setForgotStep(1);
                                 return;
                               }
                               try {
                                 setForgotLoading(true);
-                                setForgotStatus(t('login.resendingCode'));
+                                setForgotStatus('Đang gửi lại mã xác nhận...');
                                 await forgotPasswordOtp(forgotEmail);
-                                setForgotStatus(t('login.codeResent'));
+                                setForgotStatus(
+                                  'Nếu email tồn tại, mã xác nhận mới đã được gửi. Vui lòng kiểm tra hộp thư.'
+                                );
                               } catch (err: any) {
                                 console.error(err);
-                                setForgotStatus(err?.message || t('login.errorResendCode'));
+                                setForgotStatus(err?.message || 'Lỗi khi gửi lại mã xác nhận');
                               } finally {
                                 setForgotLoading(false);
                               }
                             }}
                             disabled={forgotLoading}
                           >
-                            {t('login.resendCode')}
+                            Gửi lại mã
                           </Button>
                           <Button
                             onClick={async () => {
                               if (!forgotEmail || !otp || !newPassword || !confirmNewPassword) {
-                                setForgotStatus(t('login.fillAllFields'));
+                                setForgotStatus('Vui lòng nhập đầy đủ thông tin');
                                 return;
                               }
                               try {
                                 setForgotLoading(true);
-                                setForgotStatus(t('login.changingPassword'));
+                                setForgotStatus('Đang đổi mật khẩu...');
                                 const result = await resetPasswordWithOtp({
                                   email: forgotEmail,
                                   otp,
                                   password: newPassword,
                                   confirmPassword: confirmNewPassword,
                                 });
-                                setForgotStatus(result?.message || t('login.passwordChanged'));
+                                setForgotStatus(result?.message || 'Đổi mật khẩu thành công');
                                 // Optional: tự động điền mật khẩu mới vào form đăng nhập
                                 setPassword(newPassword);
                                 setTimeout(() => {
@@ -432,14 +434,14 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
                                 }, 2000);
                               } catch (err: any) {
                                 console.error(err);
-                                setForgotStatus(err?.message || t('login.passwordChangeFailed'));
+                                setForgotStatus(err?.message || 'Đổi mật khẩu thất bại');
                               } finally {
                                 setForgotLoading(false);
                               }
                             }}
                             disabled={forgotLoading}
                           >
-                            {forgotLoading ? t('login.processing') : t('login.changePassword')}
+                            {forgotLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
                           </Button>
                         </div>
                       </div>
@@ -455,13 +457,13 @@ export function Login({ onLogin, onShowRegister, error, loading }: LoginProps) {
             )}
 
             <div className="mt-6 text-center text-sm text-gray-500">
-              {t('login.noAccount')}{' '}
-              <button
+              Chưa có tài khoản?{' '}
+              <button 
                 type="button"
                 onClick={onShowRegister}
                 className="text-blue-600 hover:underline"
               >
-                {t('login.registerNow')}
+                Đăng ký ngay
               </button>
             </div>
           </CardContent>

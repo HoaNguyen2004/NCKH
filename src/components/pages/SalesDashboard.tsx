@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Target, MessageSquare, Phone, TrendingUp, Star, Clock } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useState, useEffect } from 'react';
@@ -28,45 +28,37 @@ interface SalesDashboardProps {
 
 export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
   const { t } = useLanguage();
-
-  // Default sales metrics with translations
-  const defaultSalesMetrics = useMemo(() => [
-    { label: t('sales.myLeads'), value: '45', change: '+8 ' + t('sales.today'), icon: Target, color: 'blue' },
-    { label: t('sales.activeChats'), value: '12', change: '3 ' + t('sales.unread'), icon: MessageSquare, color: 'green' },
-    { label: t('sales.callsMade'), value: '28', change: t('sales.today'), icon: Phone, color: 'purple' },
+  
+  const [salesMetrics, setSalesMetrics] = useState([
+    { label: t('sales.myLeads'), value: '45', change: '+8 today', icon: Target, color: 'blue' },
+    { label: t('sales.activeChats'), value: '12', change: '3 unread', icon: MessageSquare, color: 'green' },
+    { label: t('sales.callsMade'), value: '28', change: 'Today', icon: Phone, color: 'purple' },
     { label: t('sales.conversionRate'), value: '32%', change: '+5%', icon: TrendingUp, color: 'pink' },
-  ], [t]);
-
-  const [salesMetrics, setSalesMetrics] = useState(defaultSalesMetrics);
-
-  // Update metrics when language changes (only if not fetched from API)
-  useEffect(() => {
-    setSalesMetrics(defaultSalesMetrics);
-  }, [defaultSalesMetrics]);
+  ]);
 
   const [urgentLeads, setUrgentLeads] = useState([
-    {
-      name: 'Nguyễn Minh Tuấn',
-      product: 'Laptop Dell',
-      budget: '7-10M',
+    { 
+      name: 'Nguyễn Minh Tuấn', 
+      product: 'Laptop Dell', 
+      budget: '7-10M', 
       priority: 'high',
       lastContact: '2 giờ trước',
       status: 'new',
       phone: '0912345678'
     },
-    {
-      name: 'Trần Thu Hà',
-      product: 'iPhone 12',
-      budget: '12-15M',
+    { 
+      name: 'Trần Thu Hà', 
+      product: 'iPhone 12', 
+      budget: '12-15M', 
       priority: 'high',
       lastContact: '3 giờ trước',
       status: 'contacted',
       phone: '0987654321'
     },
-    {
-      name: 'Lê Văn Hùng',
-      product: 'MacBook Pro M1',
-      budget: '20-25M',
+    { 
+      name: 'Lê Văn Hùng', 
+      product: 'MacBook Pro M1', 
+      budget: '20-25M', 
       priority: 'medium',
       lastContact: '5 giờ trước',
       status: 'qualified',
@@ -110,8 +102,8 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
             value: metric.value,
             change: metric.change,
             icon: metric.icon === 'Target' ? Target :
-              metric.icon === 'MessageSquare' ? MessageSquare :
-                metric.icon === 'Phone' ? Phone : TrendingUp,
+                  metric.icon === 'MessageSquare' ? MessageSquare :
+                  metric.icon === 'Phone' ? Phone : TrendingUp,
             color: metric.color
           })));
 
@@ -326,11 +318,13 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
                 <div className="space-y-3">
                   {todayTasks.map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${item.status === 'completed' ? 'bg-green-500' : 'bg-yellow-500'
-                        }`} />
+                      <div className={`w-2 h-2 rounded-full mt-2 ${
+                        item.status === 'completed' ? 'bg-green-500' : 'bg-yellow-500'
+                      }`} />
                       <div className="flex-1">
-                        <div className={`text-sm ${item.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
-                          }`}>
+                        <div className={`text-sm ${
+                          item.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'
+                        }`}>
                           {item.task}
                         </div>
                         <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
@@ -348,8 +342,8 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-5 gap-4 mt-6">
-          <Button
-            variant="outline"
+          <Button 
+            variant="outline" 
             className="h-20"
             onClick={() => {
               const lead = urgentLeads[0];
@@ -363,8 +357,8 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
               <div className="text-sm">{t('sales.makeCall')}</div>
             </div>
           </Button>
-          <Button
-            variant="outline"
+          <Button 
+            variant="outline" 
             className="h-20"
             onClick={() => onNavigate?.('conversations')}
           >
@@ -373,8 +367,8 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
               <div className="text-sm">{t('sales.sendMessage')}</div>
             </div>
           </Button>
-          <Button
-            variant="outline"
+          <Button 
+            variant="outline" 
             className="h-20"
             onClick={() => onNavigate?.('leads')}
           >
@@ -383,8 +377,8 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
               <div className="text-sm">{t('sales.addLead')}</div>
             </div>
           </Button>
-          <Button
-            variant="outline"
+          <Button 
+            variant="outline" 
             className="h-20"
             onClick={() => onNavigate?.('leads')}
           >
@@ -393,8 +387,8 @@ export function SalesDashboard({ onNavigate }: SalesDashboardProps) {
               <div className="text-sm">{t('sales.updateStatus')}</div>
             </div>
           </Button>
-          <Button
-            variant="outline"
+          <Button 
+            variant="outline" 
             className="h-20"
             onClick={() => onNavigate?.('reports')}
           >

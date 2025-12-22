@@ -18,10 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { useLanguage } from '../../contexts/LanguageContext';
 
 export function AISettings() {
-  const { t } = useLanguage();
   const [confidenceThreshold, setConfidenceThreshold] = useState([75]);
   const [enableNLP, setEnableNLP] = useState(true);
   const [enableOCR, setEnableOCR] = useState(true);
@@ -30,36 +28,36 @@ export function AISettings() {
 
   const aiModels = [
     {
-      name: t('aiSettings.nlpModel'),
-      description: t('aiSettings.nlpDesc'),
+      name: 'NLP Text Classifier',
+      description: 'Classifies posts as buying or selling requests',
       status: 'active',
       accuracy: '94.2%',
       enabled: enableNLP,
       toggle: setEnableNLP
     },
     {
-      name: t('aiSettings.ocrModel'),
-      description: t('aiSettings.ocrDesc'),
+      name: 'OCR Image Reader',
+      description: 'Extracts text from images in posts',
       status: 'active',
       accuracy: '89.7%',
       enabled: enableOCR,
       toggle: setEnableOCR
     },
     {
-      name: t('aiSettings.spamDetector'),
-      description: t('aiSettings.spamDesc'),
+      name: 'Spam Detector',
+      description: 'Filters out spam and fraudulent posts',
       status: 'active',
       accuracy: '96.5%',
       enabled: enableSpamDetection,
       toggle: setEnableSpamDetection
     },
     {
-      name: t('aiSettings.priceExtractor'),
-      description: t('aiSettings.priceDesc'),
+      name: 'Price Extractor',
+      description: 'Identifies and extracts price information',
       status: 'active',
       accuracy: '91.3%',
       enabled: true,
-      toggle: () => { }
+      toggle: () => {}
     }
   ];
 
@@ -68,8 +66,8 @@ export function AISettings() {
       <header className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-gray-900">{t('aiSettings.title')}</h1>
-            <p className="text-gray-500">{t('aiSettings.subtitle')}</p>
+            <h1 className="text-gray-900">AI Settings</h1>
+            <p className="text-gray-500">Configure AI models and analysis parameters</p>
           </div>
         </div>
       </header>
@@ -80,8 +78,8 @@ export function AISettings() {
           <div className="col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t('aiSettings.modelConfig')}</CardTitle>
-                <CardDescription>{t('aiSettings.modelConfigDesc')}</CardDescription>
+                <CardTitle>AI Model Configuration</CardTitle>
+                <CardDescription>Manage AI modules and their settings</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {aiModels.map((model, index) => (
@@ -98,7 +96,7 @@ export function AISettings() {
                           )}
                         </div>
                         <div className="text-gray-500 text-sm">{model.description}</div>
-                        <div className="text-gray-600 text-sm mt-1">{t('aiSettings.accuracy')}: {model.accuracy}</div>
+                        <div className="text-gray-600 text-sm mt-1">Accuracy: {model.accuracy}</div>
                       </div>
                     </div>
                     <Switch
@@ -112,13 +110,13 @@ export function AISettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{t('aiSettings.advancedSettings')}</CardTitle>
-                <CardDescription>{t('aiSettings.advancedDesc')}</CardDescription>
+                <CardTitle>Advanced Settings</CardTitle>
+                <CardDescription>Fine-tune AI analysis parameters</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <Label>{t('aiSettings.confidenceThreshold')}</Label>
+                    <Label>Confidence Threshold</Label>
                     <span className="text-gray-900">{confidenceThreshold[0]}%</span>
                   </div>
                   <Slider
@@ -129,35 +127,35 @@ export function AISettings() {
                     step={5}
                   />
                   <p className="text-gray-500 text-sm mt-2">
-                    {t('aiSettings.confidenceHint')}
+                    Only show results with confidence level above this threshold
                   </p>
                 </div>
 
                 <div>
-                  <Label>{t('aiSettings.modelVersion')}</Label>
+                  <Label>Model Version</Label>
                   <Select value={modelVersion} onValueChange={setModelVersion}>
                     <SelectTrigger className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="v1.8">v1.8 ({t('aiSettings.versionStable')})</SelectItem>
-                      <SelectItem value="v2.0">v2.0 ({t('aiSettings.versionProduction')})</SelectItem>
-                      <SelectItem value="v2.1">v2.1 ({t('aiSettings.versionLatest')})</SelectItem>
-                      <SelectItem value="v2.2-beta">v2.2 ({t('aiSettings.versionBeta')})</SelectItem>
+                      <SelectItem value="v1.8">v1.8 (Stable)</SelectItem>
+                      <SelectItem value="v2.0">v2.0 (Production)</SelectItem>
+                      <SelectItem value="v2.1">v2.1 (Latest)</SelectItem>
+                      <SelectItem value="v2.2-beta">v2.2 (Beta)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-gray-500 text-sm mt-2">
-                    {t('aiSettings.versionHint')}
+                    Select the AI model version to use for analysis
                   </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">
                   <Button className="flex-1">
                     <Settings2 className="w-4 h-4 mr-2" />
-                    {t('aiSettings.saveConfig')}
+                    Save Configuration
                   </Button>
                   <Button variant="outline">
-                    {t('aiSettings.resetDefault')}
+                    Reset to Default
                   </Button>
                 </div>
               </CardContent>
@@ -168,23 +166,23 @@ export function AISettings() {
           <div className="col-span-1 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t('aiSettings.performance')}</CardTitle>
-                <CardDescription>{t('aiSettings.performanceDesc')}</CardDescription>
+                <CardTitle>Model Performance</CardTitle>
+                <CardDescription>Real-time performance metrics</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="text-green-600 text-sm mb-1">{t('aiSettings.overallAccuracy')}</div>
+                  <div className="text-green-600 text-sm mb-1">Overall Accuracy</div>
                   <div className="text-green-900 text-2xl">93.8%</div>
                 </div>
 
                 <div className="p-4 bg-blue-50 rounded-lg">
-                  <div className="text-blue-600 text-sm mb-1">{t('aiSettings.processingSpeed')}</div>
+                  <div className="text-blue-600 text-sm mb-1">Processing Speed</div>
                   <div className="text-blue-900 text-2xl">245ms</div>
-                  <div className="text-blue-600 text-sm">{t('aiSettings.avgPerPost')}</div>
+                  <div className="text-blue-600 text-sm">avg. per post</div>
                 </div>
 
                 <div className="p-4 bg-purple-50 rounded-lg">
-                  <div className="text-purple-600 text-sm mb-1">{t('aiSettings.activeModels')}</div>
+                  <div className="text-purple-600 text-sm mb-1">Active Models</div>
                   <div className="text-purple-900 text-2xl">
                     {aiModels.filter(m => m.enabled).length}/{aiModels.length}
                   </div>
@@ -194,20 +192,20 @@ export function AISettings() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{t('aiSettings.quickActions')}</CardTitle>
+                <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button variant="outline" className="w-full justify-start">
                   <Zap className="w-4 h-4 mr-2" />
-                  {t('aiSettings.testModel')}
+                  Test Model
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <Settings2 className="w-4 h-4 mr-2" />
-                  {t('aiSettings.calibrate')}
+                  Calibrate Models
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <Brain className="w-4 h-4 mr-2" />
-                  {t('aiSettings.viewTrainingData')}
+                  View Training Data
                 </Button>
               </CardContent>
             </Card>
